@@ -6,28 +6,47 @@ const API_BASE_URL = 'http://localhost:8000/api/modules'; // Base URL for module
 const handleResponse = async (response) => {
     if (!response.ok) {
         const contentType = response.headers.get('content-type');
-        let errorMessage = 'An error occurred with module data.';
         let errorData;
+        let errorMessage = `An error occurred. Status: ${response.status}`;
 
+        // Specific check for auth errors (401, 403)
+        if (response.status === 401 || response.status === 403) {
+            if (contentType && contentType.includes('application/json')) {
+                errorData = await response.json().catch(() => ({ message: `Authentication error (status ${response.status}). Failed to parse JSON body.` }));
+            } else if (contentType && contentType.includes('text/html')) {
+                // For HTML auth errors, we don't want to parse the HTML.
+                errorData = { message: `Authentication error (status ${response.status}). Received HTML response.` };
+            } else {
+                errorData = { message: `Authentication error (status ${response.status}). Content-Type: ${contentType}` };
+            }
+
+            const err = new Error(errorData.detail || errorData.message || `HTTP error ${response.status}`);
+            err.isAuthError = true;
+            err.statusCode = response.status;
+            console.error('Module API Auth Error:', errorData);
+            throw err;
+        }
+
+        // General error handling for other !response.ok cases
         if (contentType && contentType.includes('application/json')) {
             errorData = await response.json().catch(() => ({ message: 'Error parsing JSON error response.' }));
         } else if (contentType && contentType.includes('text/html')) {
-            throw new Error(`Server error: Received HTML response instead of JSON. Status: ${response.status}`);
+            // Avoid parsing HTML, create a specific error message
+            errorMessage = `Server error: Received HTML response instead of JSON. Status: ${response.status}`;
+            console.error('Module API Error: Received HTML instead of JSON', { status: response.status });
+            throw new Error(errorMessage);
         } else {
-            // Fallback for other content types or if content-type is missing
-            // Try to get text, but avoid crashing if it's not available or not text.
             try {
                 const textResponse = await response.text();
-                // Use a generic message if textResponse is too long or unhelpful
                 errorMessage = `Server error: Status ${response.status}. Response: ${textResponse.substring(0, 100)}`;
             } catch (e) {
                 errorMessage = `Server error: Status ${response.status}. Unable to parse response.`;
             }
+            console.error('Module API Error: Non-JSON/HTML error', { status: response.status, contentType });
             throw new Error(errorMessage);
         }
 
         console.error('Module API Error:', errorData);
-        // Process errorData if it was parsed (i.e., it was JSON)
         if (errorData) {
             if (errorData.detail) {
                 errorMessage = errorData.detail;
@@ -39,8 +58,7 @@ const handleResponse = async (response) => {
                     return `${key}: ${value}`;
                 }).join('; ');
             } else {
-                // If errorData was from .catch() or not in expected format
-                 errorMessage = errorData.message || 'An unknown error occurred while processing module data.';
+                errorMessage = errorData.message || 'An unknown error occurred while processing module data.';
             }
         }
         throw new Error(errorMessage);
@@ -63,41 +81,107 @@ const handleResponse = async (response) => {
 
 // Fetch all progress for a specific module for the current user
 const getModuleProgress = async (moduleId) => {
-    const token = authService.getAuthToken();
+    let token = authService.getAuthToken(); // Use let as it might be updated
+    console.log('[Debug] Auth Token for Progress (Initial):', token);
     if (!token) {
+        // This case should ideally not happen if login flow is correct,
+        // but if it does, refresh might not be possible or sensible.
         throw new Error('User not authenticated. Cannot fetch module progress.');
     }
 
-    const response = await fetch(`${API_BASE_URL}/${moduleId}/progress/`, {
+    const requestUrl = `${API_BASE_URL}/${moduleId}/progress/`;
+    const requestOptions = {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-    });
-    return handleResponse(response);
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        return await handleResponse(response);
+    } catch (error) {
+        if (error.isAuthError && error.statusCode === 401) { // Typically 401 for expired token
+            console.log('Auth error detected (401), attempting token refresh for getModuleProgress...');
+            try {
+                await authService.refreshToken();
+                token = authService.getAuthToken(); // Get the new token
+                console.log('[Debug] Auth Token for Progress (After Refresh):', token);
+                if (!token) {
+                    authService.logout(); // Logout if refresh succeeded but no token found
+                    throw new Error('Token refresh seemed to succeed but no new token found. Logging out.');
+                }
+
+                // Update Authorization header for the retry
+                requestOptions.headers['Authorization'] = `Bearer ${token}`;
+
+                console.log('Token refreshed, retrying original request for getModuleProgress...');
+                const retryResponse = await fetch(requestUrl, requestOptions);
+                return await handleResponse(retryResponse);
+            } catch (refreshError) {
+                console.error('Token refresh failed for getModuleProgress:', refreshError);
+                authService.logout(); // Logout on refresh failure
+                // It might be better to throw the refreshError to indicate refresh failed
+                // or the original error if refreshError is too generic.
+                throw new Error(`Token refresh failed: ${refreshError.message}. Original error: ${error.message}`);
+            }
+        }
+        throw error; // Re-throw original error if not auth error or not a 401, or if retry failed
+    }
 };
 
 // Mark a specific task within a module as completed for the current user
 const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
-    const token = authService.getAuthToken();
+    let token = authService.getAuthToken(); // Use let
+    console.log('[Debug] Auth Token for Mark Task (Initial):', token);
     if (!token) {
         throw new Error('User not authenticated. Cannot save module progress.');
     }
 
-    const response = await fetch(`${API_BASE_URL}/progress/`, { // POST to the general progress creation endpoint
+    const requestUrl = `${API_BASE_URL}/progress/`; // POST to the general progress creation endpoint
+    const requestBody = {
+        module_id: moduleId,
+        task_id: taskId,
+        status: status,
+    };
+    const requestOptions = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-            module_id: moduleId,
-            task_id: taskId,
-            status: status,
-        }),
-    });
-    return handleResponse(response);
+        body: JSON.stringify(requestBody),
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        return await handleResponse(response);
+    } catch (error) {
+        if (error.isAuthError && error.statusCode === 401) { // Typically 401
+            console.log('Auth error detected (401), attempting token refresh for markTaskAsCompleted...');
+            try {
+                await authService.refreshToken();
+                token = authService.getAuthToken(); // Get the new token
+                console.log('[Debug] Auth Token for Mark Task (After Refresh):', token);
+                 if (!token) {
+                    authService.logout();
+                    throw new Error('Token refresh seemed to succeed but no new token found. Logging out.');
+                }
+
+                requestOptions.headers['Authorization'] = `Bearer ${token}`;
+
+                console.log('Token refreshed, retrying original request for markTaskAsCompleted...');
+                const retryResponse = await fetch(requestUrl, requestOptions);
+                return await handleResponse(retryResponse);
+            } catch (refreshError) {
+                console.error('Token refresh failed for markTaskAsCompleted:', refreshError);
+                authService.logout();
+                throw new Error(`Token refresh failed: ${refreshError.message}. Original error: ${error.message}`);
+            }
+        }
+        throw error;
+    }
 };
 
 export default {
