@@ -68,3 +68,91 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+---
+
+## Full Stack Application Setup (Frontend + Django Backend)
+
+This project now includes a Django backend integrated with the React frontend.
+Follow these steps to set up and run both parts of the application.
+
+### Prerequisites
+
+*   Node.js and npm (for the React frontend)
+*   Python 3.x and pip (for the Django backend)
+
+### Backend Setup (Django)
+
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
+
+2.  **Create a Python virtual environment:**
+    (If you don't have `virtualenv` installed, you might need to install it first: `pip install virtualenv`)
+    ```bash
+    python -m venv venv  # or python3 -m venv venv
+    ```
+
+3.  **Activate the virtual environment:**
+    *   On macOS and Linux:
+        ```bash
+        source venv/bin/activate
+        ```
+    *   On Windows:
+        ```bash
+        .\venv\Scripts\activate
+        ```
+
+4.  **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+5.  **Apply database migrations:**
+    (This will create the SQLite database file and set up the necessary tables)
+    ```bash
+    python manage.py migrate
+    ```
+
+6.  **Create a superuser (optional but recommended for testing):**
+    Follow the prompts to create an admin user.
+    ```bash
+    python manage.py createsuperuser
+    ```
+    (Note: A default superuser 'admin' with password 'adminpassword123' was created during the initial setup if you followed the automated steps. You can use this or create your own.)
+
+7.  **Start the Django development server:**
+    ```bash
+    python manage.py runserver
+    ```
+    The backend will typically run on [http://localhost:8000](http://localhost:8000).
+
+### Frontend Setup (React)
+
+1.  **Navigate to the project root directory** (if you are in the `backend` directory, go one level up: `cd ..`).
+
+2.  **Install JavaScript dependencies:**
+    (If you haven't installed them yet or if `package.json` has changed)
+    ```bash
+    npm install
+    ```
+
+3.  **Start the React development server:**
+    ```bash
+    npm start
+    ```
+    The frontend will typically run on [http://localhost:3000](http://localhost:3000) and will open automatically in your browser.
+
+### Running Both Servers
+
+*   You'll need to run the backend Django server and the frontend React server in separate terminal windows.
+*   Ensure the backend is running before you try to log in or register from the frontend, as it relies on the backend APIs.
+
+### Default Superuser
+During the automated setup, a superuser may have been created with the following credentials:
+*   **Username:** `admin`
+*   **Password:** `adminpassword123`
+*   **Email:** `admin@example.com` (or similar)
+
+You can use these credentials to log into the Django admin interface (usually at `/admin/` on the backend URL, e.g., `http://localhost:8000/admin/`) or to test login on the frontend.
