@@ -5,27 +5,52 @@ const API_BASE_URL = 'http://localhost:8000/api/modules'; // Base URL for module
 // Function to handle API responses, similar to authService
 const handleResponse = async (response) => {
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred while processing module data.' }));
-        console.error('Module API Error:', errorData);
+        const contentType = response.headers.get('content-type');
         let errorMessage = 'An error occurred with module data.';
+        let errorData;
+
+        if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json().catch(() => ({ message: 'Error parsing JSON error response.' }));
+        } else if (contentType && contentType.includes('text/html')) {
+            throw new Error(`Server error: Received HTML response instead of JSON. Status: ${response.status}`);
+        } else {
+            // Fallback for other content types or if content-type is missing
+            // Try to get text, but avoid crashing if it's not available or not text.
+            try {
+                const textResponse = await response.text();
+                // Use a generic message if textResponse is too long or unhelpful
+                errorMessage = `Server error: Status ${response.status}. Response: ${textResponse.substring(0, 100)}`;
+            } catch (e) {
+                errorMessage = `Server error: Status ${response.status}. Unable to parse response.`;
+            }
+            throw new Error(errorMessage);
+        }
+
+        console.error('Module API Error:', errorData);
+        // Process errorData if it was parsed (i.e., it was JSON)
         if (errorData) {
             if (errorData.detail) {
-                 errorMessage = errorData.detail;
+                errorMessage = errorData.detail;
             } else if (errorData.message) {
-                 errorMessage = errorData.message;
+                errorMessage = errorData.message;
             } else if (typeof errorData === 'object' && Object.keys(errorData).length > 0) {
                 errorMessage = Object.entries(errorData).map(([key, value]) => {
-                    if (Array.isArray(value)) return `\${key}: \${value.join(' ')}`; // Corrected template literal
-                    return `\${key}: \${value}`; // Corrected template literal
+                    if (Array.isArray(value)) return `${key}: ${value.join(' ')}`;
+                    return `${key}: ${value}`;
                 }).join('; ');
+            } else {
+                // If errorData was from .catch() or not in expected format
+                 errorMessage = errorData.message || 'An unknown error occurred while processing module data.';
             }
         }
         throw new Error(errorMessage);
     }
+
     // For 204 No Content, response.json() will fail.
     if (response.status === 204) {
         return null;
     }
+    // If response.ok is true, proceed to parse as JSON.
     return response.json();
 };
 
