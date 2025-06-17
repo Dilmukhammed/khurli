@@ -50,7 +50,14 @@ const handleResponse = async (response) => {
     if (response.status === 204 || response.status === 304) {
         return null;
     }
-    // If response.ok is true, proceed to parse as JSON.
+
+    // Check Content-Type even for successful responses before attempting to parse as JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+        throw new Error(`API Error: Expected JSON but received HTML content with success status (${response.status}).`);
+    }
+
+    // If response.ok is true, and content type is not HTML, proceed to parse as JSON.
     return response.json();
 };
 
@@ -61,11 +68,11 @@ const getModuleProgress = async (moduleId) => {
         throw new Error('User not authenticated. Cannot fetch module progress.');
     }
 
-    const response = await fetch(`\${API_BASE_URL}/\${moduleId}/progress/`, { // Corrected template literal
+    const response = await fetch(`${API_BASE_URL}/${moduleId}/progress/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer \${token}`, // Corrected template literal
+            'Authorization': `Bearer ${token}`,
         },
     });
     return handleResponse(response);
@@ -78,11 +85,11 @@ const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
         throw new Error('User not authenticated. Cannot save module progress.');
     }
 
-    const response = await fetch(`\${API_BASE_URL}/progress/`, { // Corrected template literal; POST to the general progress creation endpoint
+    const response = await fetch(`${API_BASE_URL}/progress/`, { // POST to the general progress creation endpoint
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer \${token}`, // Corrected template literal
+            'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
             module_id: moduleId,
