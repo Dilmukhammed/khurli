@@ -1,59 +1,38 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
-// To navigate programmatically after login/logout
-// import { useNavigate } from 'react-router-dom'; // Cannot use hooks directly in context file at module scope
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // Initially true to check token status
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        // Check for existing token on initial load
-        const initializeAuth = async () => {
+        const initializeAuth = () => { // Removed async as refreshToken is not called here
             setLoading(true);
-            const token = authService.getAuthToken();
+            const token = authService.getAuthToken(); // This gets accessToken
             if (token) {
-                // Ideally, you'd validate the token here with a backend /me endpoint
-                // For now, if token exists, assume user is logged in.
-                // You might want to decode the token to get user info if it's a JWT and not opaque
-                // For simplicity, we'll just set a placeholder user or handle this in login
-                // For a more robust app, fetch user details from a '/api/users/me' endpoint
-                try {
-                    // Attempt to refresh token to ensure validity and get fresh user data if needed
-                    // This also handles the case where the access token is expired but refresh is valid
-                    await authService.refreshToken(); // This will update localStorage
-                    const refreshedToken = authService.getAuthToken();
-                    if (refreshedToken) {
-                        setUser({ token: refreshedToken }); // Or decode token for user details
-                        setIsAuthenticated(true);
-                    } else {
-                        // Refresh failed or no token after refresh
-                        authService.logout(); // Clean up tokens
-                        setIsAuthenticated(false);
-                        setUser(null);
-                    }
-                } catch (err) {
-                    console.warn("Initial token refresh failed or no token:", err.message);
-                    authService.logout(); // Clean up if token is invalid
-                    setIsAuthenticated(false);
-                    setUser(null);
-                }
+                // If a token exists, we'll assume the user is authenticated for now.
+                // The token's validity will be checked when an API call is made.
+                // A more robust solution would be to verify the token with a backend /me endpoint here
+                // or decode it if it contains necessary, non-sensitive user info and expiry.
+                setUser({ token }); // Store the token or decoded user info
+                setIsAuthenticated(true);
             }
             setLoading(false);
         };
         initializeAuth();
-    }, []);
+    }, []); // Runs once on AuthProvider mount
 
     const login = async (username, password) => {
         setLoading(true);
         setError(null);
         try {
             const data = await authService.login(username, password);
-            setUser({ token: data.access }); // Or decode token for user details
+            // authService.login already stores tokens in localStorage
+            setUser({ token: data.access });
             setIsAuthenticated(true);
             setLoading(false);
             return data;
@@ -71,8 +50,6 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const data = await authService.register(username, email, password, password2);
-            // Optionally, log the user in directly after registration
-            // For now, let's require them to login separately.
             setLoading(false);
             return data;
         } catch (err) {
@@ -83,25 +60,25 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        authService.logout();
+        authService.logout(); // Clears tokens from localStorage
         setUser(null);
         setIsAuthenticated(false);
         setError(null);
-        // navigate('/login'); // Programmatic navigation after logout
+        // Navigation to /login should be handled by components using this context or ProtectedRoute
     };
 
-    // Function to attempt token refresh, can be called by API interceptors or components
+    // Function to attempt token refresh.
+    // This would typically be called by an API interceptor when a 401 is received.
     const attemptRefreshToken = async () => {
         try {
-            await authService.refreshToken();
-            const refreshedToken = authService.getAuthToken();
-            if (refreshedToken) {
-                 setUser({ token: refreshedToken });
+            const data = await authService.refreshToken(); // authService handles localStorage updates
+            if (data && data.access) {
+                 setUser({ token: data.access });
                  setIsAuthenticated(true);
-                 return true;
+                 return true; // Token refreshed successfully
             }
-            // if no refreshed token, logout
-            logout();
+            // If refresh didn't yield an access token for some reason
+            logout(); // Force logout
             return false;
         } catch (error) {
             console.error("Attempt refresh token failed in context:", error);
@@ -110,9 +87,20 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const value = {
+        user,
+        isAuthenticated,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+        attemptRefreshToken, // Expose this for manual calls or future interceptors
+        setError // Allow components to clear errors or set custom ones
+    };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, loading, error, login, register, logout, attemptRefreshToken }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
