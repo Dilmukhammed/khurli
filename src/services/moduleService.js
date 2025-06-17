@@ -46,8 +46,8 @@ const handleResponse = async (response) => {
         throw new Error(errorMessage);
     }
 
-    // For 204 No Content, response.json() will fail.
-    if (response.status === 204) {
+    // For 204 No Content or 304 Not Modified, response.json() will fail as there's no body.
+    if (response.status === 204 || response.status === 304) {
         return null;
     }
     // If response.ok is true, proceed to parse as JSON.
