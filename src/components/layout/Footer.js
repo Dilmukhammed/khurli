@@ -1,16 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import { Link } from 'react-router-dom';
 
-// Placeholder for language context/hook
-import { useLanguage } from '../../contexts/LanguageContext';
+// Removed: import { useLanguage } from '../../contexts/LanguageContext';
 
-/**
- * Footer component for the Logiclingua platform.
- * Contains copyright information and links to legal pages.
- */
 const Footer = () => {
-  // Local state for language. Later, this will come from a global context.
-  const language = localStorage.getItem('logiclingua-lang') || 'ru';
+  // Local state for language, reverting useLanguage
+  const [language, setLanguage] = useState(localStorage.getItem('logiclingua-lang') || 'en'); // Default to 'en'
 
   const translations = {
     ru: {
@@ -25,10 +20,19 @@ const Footer = () => {
     }
   };
 
-  const t = translations[language];
+  // Fallback to 'en' if the stored language is not in translations
+  const t = translations[language] || translations['en'];
+
+  useEffect(() => {
+    // Optional: could be used for other language-specific side effects if needed in future
+    // For now, this just mirrors the setup in the fixed Header.js
+  }, [language]);
+
+  // Note: A language switcher is not typically in the footer.
+  // If one were needed, handleLanguageChange from Header.js could be adapted.
 
   return (
-    <footer className="bg-gray-800 text-white mt-auto">
+    <footer className="bg-gray-800 text-white mt-auto"> {/* mt-auto helps ensure it's at the bottom if content is short */}
       <div className="container mx-auto px-6 py-8 text-center">
         <p dangerouslySetInnerHTML={{ __html: t.footerRights }} />
         <div className="mt-4">
