@@ -220,7 +220,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                         optionsData: options
                     })}
                     disabled={isMainAiLoading && activeAiTaskKey === taskKey}
-                    className="mt-3 ml-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                    className="mt-3 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
                 >
                     {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
                 </button>
@@ -600,7 +600,7 @@ export default function FactOpinionModule() {
                             <button
                                 onClick={() => handleAskAiFactOpinion('bTask2')}
                                 disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
-                                className="mt-3 ml-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                className="mt-3 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
                             >
                                 {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
                             </button>
@@ -685,7 +685,7 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-4">
+                        <div className="mt-3">
                             {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
                                 <button
                                     onClick={() => handleAskAiFactOpinion('iTask1')}
@@ -740,7 +740,7 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-4">
+                        <div className="mt-3">
                             {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                                 <button
                                     onClick={() => handleAskAiFactOpinion('iTask2')}
@@ -856,7 +856,7 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-4">
+                        <div className="mt-3">
                             {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
                                 <button
                                     onClick={() => handleAskAiFactOpinion('aTask2')}
