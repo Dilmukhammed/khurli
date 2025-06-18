@@ -184,7 +184,51 @@ const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
     }
 };
 
+// Function to get AI explanation for proverb mistakes
+const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers, userQuery = '') => {
+    let token = authService.getAuthToken();
+    if (!token) {
+        // This error should ideally be caught by UI logic preventing call if not logged in
+        // or if token is known to be missing.
+        throw new Error('User not authenticated. Cannot fetch AI explanation.');
+    }
+
+    const requestUrl = `${API_BASE_URL}/ai/explain-proverb/`; // Note: API_BASE_URL is '/api/modules'
+    const requestBody = {
+        block_context: blockContext,
+        user_answers: userAnswers,
+        correct_answers: correctAnswers,
+        user_query: userQuery,
+    };
+
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        // Assuming handleResponse is suitable for this too, or create a specific one if needed.
+        // handleResponse already includes logic for 401/403 and general errors.
+        return await handleResponse(response);
+    } catch (error) {
+        // Token refresh logic similar to getModuleProgress could be added here if desired,
+        // but for simplicity in this step, we'll rely on handleResponse's existing behavior
+        // and the primary token being valid. If a 401 occurs, handleResponse might throw
+        // an error that the calling component needs to catch.
+        // For now, let's assume a 401 from here means the token is truly invalid and refresh
+        // should have happened earlier or the user needs to re-login.
+        console.error('Error in getAiProverbExplanation:', error);
+        throw error; // Re-throw to be handled by the calling component
+    }
+};
+
 export default {
     getModuleProgress,
     markTaskAsCompleted,
+    getAiProverbExplanation, // Add new function here
 };

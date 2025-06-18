@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import moduleService from '../../services/moduleService'; // For progress tracking
 import { useAuth } from '../../contexts/AuthContext'; // To check auth status
+import AiChatWindow from '../../components/common/AiChatWindow';
 
 // --- Translations Object ---
 const translations = {
@@ -296,6 +297,11 @@ const CulturalProverbsModule = () => {
     const [results, setResults] = useState({});
     const [showAiButtons, setShowAiButtons] = useState({});
 
+    // State for AI Chat
+    const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+
     const { isAuthenticated } = useAuth();
     const [completedTasks, setCompletedTasks] = useState({});
     const [progressLoading, setProgressLoading] = useState(true);
@@ -340,6 +346,72 @@ const CulturalProverbsModule = () => {
     const t = useCallback((key) => {
         return translations[language]?.[key] || translations['en'][key] || key;
     }, [language]);
+
+    // Helper function to format answers for AI
+    const formatAnswersForAI = (answerObject) => {
+        if (!answerObject) return [];
+        return Object.entries(answerObject).map(([key, value]) => `${key}: ${String(value)}`);
+    };
+
+    // Helper function to get task details for AI
+    const getTaskDetailsForAI = (taskKey) => {
+        const taskAnswers = answers[taskKey] || {};
+        let taskCorrectAnswers = {};
+        let taskBlockContext = t(`${taskKey}Title`) + "\n" + t(`${taskKey}Desc`);
+
+        if (taskKey === 'beginnerTask1') {
+            taskCorrectAnswers = { q1: 'a', q2: 'b', q3: 'c', q4: 'd', q5: 'e' };
+            const proverbs = [
+                 { key: 'q1', uz: "1. Yaxshi do'st - qiyin kunda bilinadi", en: "a) A friend in need is a friend indeed"},
+                 { key: 'q2', uz: "2. Sabrlik - oltin", en: "b) Patience is a virtue"},
+                 { key: 'q3', uz: "3. Mehnat qilmagan - rohat topmas", en: "c) No pain - no gain"},
+                 { key: 'q4', uz: "4. Kichik daryolar katta daryolarga qo'shiladi", en: "d) Little by little, the bird builds its nest"},
+                 { key: 'q5', uz: "5. Yomg'irdan qochib, do'lga tutilma", en: "e) Out of the frying pan, into the fire"},
+            ];
+            taskBlockContext += "\n\nProverbs and Options:\n" + proverbs.map(p => `${p.uz} -> English Options: ${p.en.substring(0,1)}`).join("\n");
+        } else if (taskKey === 'beginnerTask2') {
+            taskCorrectAnswers = { q1: 'b', q2: 'a', q3: 'b' };
+             const questions = [
+                 { key: 'q1', proverb: '1. "Yaxshi do‘st – qiyin kunda bilinadi."' },
+                 { key: 'q2', proverb: '2. "Mehnat qilmagan – rohat topmas."' },
+                 { key: 'q3', proverb: '3. "Sabrlik – oltin."' },
+             ];
+             taskBlockContext += "\n\nProverbs:\n" + questions.map(q => q.proverb).join("\n");
+        } else if (taskKey === 'beginnerTask3') {
+            taskCorrectAnswers = { q1: 'indeed', q2: 'gain', q3: 'fire', q4: 'nest', q5: 'virtue' };
+             const fillInProverbs = [
+                 '"A friend in need is a friend ___." (indeed, always, never)',
+                 '"No pain, no ___." (gain, rain, train)',
+                 '"Out of the frying pan, into the ___." (fire, ice, water)',
+                 '"Little by little, the bird builds its ___." (nest, house, tree)',
+                 '"Patience is a ___." (virtue, mistake, problem)',
+             ];
+             taskBlockContext += "\n\nFill-in Proverbs (full list):\n" + fillInProverbs.join("\n");
+        } else if (taskKey === 'intermediateTask1') {
+            taskCorrectAnswers = { q1: 'd', q2: 'a', q3: 'c', q4: 'e', q5: 'b' };
+            // For intermediateTask1, the proverbs and situations are already in the component's JSX.
+            // We can reconstruct a simplified context or assume the title/desc is enough for now.
+            // For a more robust solution, task content would ideally come from a structured source.
+            const proverbsAndSituations = [
+              { proverb: "1. Yaxshi do'st - qiyin kunda bilinadi. (A friend in need is a friend indeed)", situationKey: 'intermediateTask1SitD' },
+              { proverb: "2. Mehnat qilmagan - rohat topmas (No pain, no gain)", situationKey: 'intermediateTask1SitA' },
+              { proverb: "3. Yomg'irdan qochib, do'lga tutilma. (Out of the frying pan, into the fire)", situationKey: 'intermediateTask1SitC' },
+              { proverb: "4. Ko'p bilan maslahat qil, lekin o'zing qaror qil. (Take advice from many, but make your own decision)", situationKey: 'intermediateTask1SitE' },
+              { proverb: "5. Tez harkat qilmagan, peshonasini uradi. (He who hesitates, regrets)", situationKey: 'intermediateTask1SitB' },
+            ];
+            taskBlockContext += "\n\nProverbs and Situations:\n" +
+                proverbsAndSituations.map(item => `${item.proverb} -> Situation: ${t(item.situationKey)}`).join("\n");
+        } else {
+            // Fallback for tasks not explicitly configured for AI
+            return { block_context: null, user_answers: [], correct_answers: [] };
+        }
+
+        return {
+            block_context: taskBlockContext,
+            user_answers: formatAnswersForAI(taskAnswers),
+            correct_answers: formatAnswersForAI(taskCorrectAnswers),
+        };
+    };
 
     const getValidationClass = (taskKey, itemKey) => {
         const status = validation[taskKey]?.[itemKey];
@@ -434,13 +506,75 @@ const CulturalProverbsModule = () => {
     const checkBeginnerTask3 = () => checkAnswers('beginnerTask3', { q1: 'indeed', q2: 'gain', q3: 'fire', q4: 'nest', q5: 'virtue' });
     const checkIntermediateTask1 = () => checkAnswers('intermediateTask1', { q1: 'd', q2: 'a', q3: 'c', q4: 'e', q5: 'b' });
     
-    const handleAskAI = (taskTitleKey) => {
-        const taskTitle = t(taskTitleKey);
-        // Corrected template literal syntax
-        const message = language === 'ru'
-            ? `Функция "Спросить ИИ" для задания "${taskTitle}" еще не реализована.`
-            : `The "Ask AI" feature for the task "${taskTitle}" is not yet implemented.`;
-        alert(message);
+    const handleAskAI = async (taskKey, userQuery = '') => {
+        if (isAiLoading && activeChatTaskKey === taskKey && userQuery) { // Allow sending new query even if loading for same task.
+            // Potentially cancel previous request or queue, but for now, let it proceed if it's a follow-up.
+            // If it's a new initial call (no userQuery) while loading for same task, maybe prevent.
+        } else if (isAiLoading) { // Loading for a different task or initial call for same task
+            return;
+        }
+
+        setIsAiLoading(true);
+        setActiveChatTaskKey(taskKey);
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }]);
+        } else {
+            // Initial call for this task, clear previous messages from other tasks if chat is being reused
+            // Or if chat window is specific per task, this might not be needed if messages are cleared when taskKey changes.
+            // For a single chat window shared across tasks that opens/closes:
+            setChatMessages([{ sender: 'ai', text: 'Let me look at your answers...' }]);
+        }
+
+        const { block_context, user_answers, correct_answers } = getTaskDetailsForAI(taskKey);
+
+        if (!block_context) {
+            console.error("Could not get task details for AI for taskKey:", taskKey);
+            const errorText = "Sorry, I couldn't get the details for this task. Make sure you've interacted with the task first.";
+            setChatMessages(prev => {
+                // If initial call (no userQuery), replace the "Thinking..." message.
+                // If follow-up, append the error.
+                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
+                if (!userQuery && lastMessageIsThinking) {
+                    return [...prev.slice(0, -1), {sender: 'ai', text: errorText}];
+                }
+                return [...prev, {sender: 'ai', text: errorText}];
+            });
+            setIsAiLoading(false);
+            // setActiveChatTaskKey(taskKey); // Already set
+            return;
+        }
+
+        try {
+            const response = await moduleService.getAiProverbExplanation(
+                block_context,
+                user_answers,
+                correct_answers,
+                userQuery
+            );
+            // If initial call (no userQuery), replace the "Thinking..." message.
+            // If follow-up, append the new AI response.
+            setChatMessages(prev => {
+                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
+                if (!userQuery && lastMessageIsThinking) {
+                     return [...prev.slice(0, -1), { sender: 'ai', text: response.explanation }];
+                }
+                return [...prev, { sender: 'ai', text: response.explanation }];
+            });
+        } catch (error) {
+            console.error('Error fetching AI explanation:', error);
+            const errorText = `Sorry, I encountered an error: ${error.message}`;
+            setChatMessages(prev => {
+                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
+                 if (!userQuery && lastMessageIsThinking) {
+                    return [...prev.slice(0, -1), { sender: 'ai', text: errorText }];
+                }
+                return [...prev, { sender: 'ai', text: errorText }];
+            });
+        } finally {
+            setIsAiLoading(false);
+            // setActiveChatTaskKey(taskKey); // Already set, and we want to keep chat open.
+        }
     };
 
     // --- JSX Render ---
@@ -500,7 +634,30 @@ const CulturalProverbsModule = () => {
                                 </table>
                                 <button onClick={checkBeginnerTask1} className="check-button mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('beginnerTask1') || progressLoading}>{t('checkAnswersBtn')}</button>
                                 {results.beginnerTask1 && <div className={`result-message ${results.beginnerTask1.type}`}>{results.beginnerTask1.message}</div>}
-                                {showAiButtons.beginnerTask1 && !isTaskCompleted('beginnerTask1') && <button onClick={() => handleAskAI('beginnerTask1Title')} className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('askAiBtn')}</button>}
+                                {showAiButtons.beginnerTask1 && !isTaskCompleted('beginnerTask1') &&
+                                    <button
+                                        onClick={() => handleAskAI('beginnerTask1')}
+                                        className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'beginnerTask1'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'beginnerTask1' ? 'AI Thinking...' : t('askAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'beginnerTask1' && (
+                                    <div className="mt-4"> {/* Wrapper for chat window */}
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('beginnerTask1', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 2 */}
@@ -531,7 +688,30 @@ const CulturalProverbsModule = () => {
                                 ))}
                                 <button onClick={checkBeginnerTask2} className="check-button mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('beginnerTask2') || progressLoading}>{t('checkAnswersBtn')}</button>
                                 {results.beginnerTask2 && <div className={`result-message ${results.beginnerTask2.type}`}>{results.beginnerTask2.message}</div>}
-                                {showAiButtons.beginnerTask2 && !isTaskCompleted('beginnerTask2') && <button onClick={() => handleAskAI('beginnerTask2Title')} className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('askAiBtn')}</button>}
+                                {showAiButtons.beginnerTask2 && !isTaskCompleted('beginnerTask2') &&
+                                    <button
+                                        onClick={() => handleAskAI('beginnerTask2')}
+                                        className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'beginnerTask2'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'beginnerTask2' ? 'AI Thinking...' : t('askAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'beginnerTask2' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('beginnerTask2', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                              {/* Task 3 */}
@@ -562,7 +742,30 @@ const CulturalProverbsModule = () => {
                                 </ol>
                                 <button onClick={checkBeginnerTask3} className="check-button mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('beginnerTask3') || progressLoading}>{t('checkAnswersBtn')}</button>
                                 {results.beginnerTask3 && <div className={`result-message ${results.beginnerTask3.type}`}>{results.beginnerTask3.message}</div>}
-                                {showAiButtons.beginnerTask3 && !isTaskCompleted('beginnerTask3') && <button onClick={() => handleAskAI('beginnerTask3Title')} className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('askAiBtn')}</button>}
+                                {showAiButtons.beginnerTask3 && !isTaskCompleted('beginnerTask3') &&
+                                    <button
+                                        onClick={() => handleAskAI('beginnerTask3')}
+                                        className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'beginnerTask3'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'beginnerTask3' ? 'AI Thinking...' : t('askAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'beginnerTask3' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('beginnerTask3', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 4 (Open-ended, not saved as 'completed' in this iteration) */}
@@ -636,7 +839,30 @@ const CulturalProverbsModule = () => {
                                 </table>
                                 <button onClick={checkIntermediateTask1} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask1') || progressLoading}>{t('checkAnswersBtn')}</button>
                                 {results.intermediateTask1 && <div className={`result-message ${results.intermediateTask1.type}`}>{results.intermediateTask1.message}</div>}
-                                {showAiButtons.intermediateTask1 && !isTaskCompleted('intermediateTask1') && <button onClick={() => handleAskAI('intermediateTask1Title')} className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('askAiBtn')}</button>}
+                                {showAiButtons.intermediateTask1 && !isTaskCompleted('intermediateTask1') &&
+                                    <button
+                                        onClick={() => handleAskAI('intermediateTask1')}
+                                        className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'intermediateTask1'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'intermediateTask1' ? 'AI Thinking...' : t('askAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'intermediateTask1' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('intermediateTask1', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 2 (Open-ended) */}

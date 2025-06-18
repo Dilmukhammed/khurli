@@ -4,6 +4,19 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'final_migrations_secret_key_v7'
 DEBUG = True
+
+# Gemini API Key
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+if not GEMINI_API_KEY and DEBUG:
+    # Optionally, print a warning during development if the key is missing
+    print("WARNING: GEMINI_API_KEY environment variable is not set. AI features may not work.")
+elif not GEMINI_API_KEY and not DEBUG:
+    # In production, you might want to raise an error or handle it more strictly
+    # For now, just ensuring it's loaded. Proper error handling if key is vital
+    # for production would be in the service using it.
+    pass
+
 ALLOWED_HOSTS = ['*']
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',

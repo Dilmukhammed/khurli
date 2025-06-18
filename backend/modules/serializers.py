@@ -16,3 +16,18 @@ class UserModuleProgressSerializer(serializers.ModelSerializer):
             defaults={'status': validated_data.get('status', UserModuleProgress.ProgressStatus.COMPLETED)}
         )
         return progress
+
+class GeminiExplanationRequestSerializer(serializers.Serializer):
+    block_context = serializers.CharField()
+    user_answers = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        allow_empty=True
+    )
+    correct_answers = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        allow_empty=True
+    )
+    user_query = serializers.CharField(required=False, allow_blank=True)
+
+class GeminiExplanationResponseSerializer(serializers.Serializer):
+    explanation = serializers.CharField()
