@@ -66,7 +66,7 @@ class GeminiProverbExplanationView(APIView):
             formatted_user_answers = '; '.join(user_answers_list)
             formatted_correct_answers = '; '.join(correct_answers_list) if correct_answers_list else "Not applicable for this query."
 
-            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'."
+            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. Ensure your tone is always polite, respectful, and encouraging. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'."
 
             if user_query: # Follow-up for mistake explanation
                 prompt_parts = [
@@ -92,7 +92,7 @@ class GeminiProverbExplanationView(APIView):
                     "After your analysis/acknowledgement, please ask the user if they have any further questions, like 'Do you have any questions about this?'."
                 ]
         elif interaction_type == 'discuss_open_ended':
-            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'." # Duplicated for safety, though ideally defined once.
+            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. Ensure your tone is always polite, respectful, and encouraging. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'." # Duplicated for safety, though ideally defined once.
 
             if user_query: # Follow-up within a discussion
                 prompt_parts = [
