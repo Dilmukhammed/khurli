@@ -79,17 +79,30 @@ const AgreeDisagreeTask = ({ taskData, t, taskKey, answers, onAnswerChange, disa
     </div>
 );
 
-const ProblemSolutionTask = ({ taskData, t, color }) => (
+const ProblemSolutionTask = ({ taskData, t, color, taskKey, answers, onAnswerChange, onSubmit, disabled, children }) => (
     <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
         <div className="space-y-4">
             {taskData.prompts.map(prompt => (
                  <div key={prompt.id}>
                     <label htmlFor={prompt.id} className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
-                    <input type="text" id={prompt.id} className="mt-1 w-full border rounded p-2 text-sm" placeholder={t.yourSolutionPlaceholder} />
+                    <input
+                        type="text"
+                        id={prompt.id}
+                        className="mt-1 w-full border rounded p-2 text-sm"
+                        placeholder={t.yourSolutionPlaceholder}
+                        value={answers[taskKey]?.[prompt.id] || ''}
+                        onChange={(e) => onAnswerChange(taskKey, prompt.id, e.target.value)}
+                        disabled={disabled}
+                    />
                 </div>
             ))}
         </div>
-        <SubmitButton color={color}>{t.submitBtn}</SubmitButton>
+        <div>
+            <SubmitButton color={color} onClick={onSubmit} disabled={disabled}>
+                {t.submitBtn}
+            </SubmitButton>
+        </div>
+        {children}
     </TaskCard>
 );
 
@@ -410,6 +423,17 @@ const DebatingModule = () => {
             if (userAnswersFormattedStrings.length === 0) {
                 userAnswersFormattedStrings.push("User has not provided any answers yet.");
             }
+        } else if (taskKey === 'bTask3') {
+            taskBlockContext = `Task: ${t.debatingBTask3Title}\nDescription: ${t.debatingBTask3Desc.replace(/<[^>]*>?/gm, '')}`;
+            if (beginnerTasks && beginnerTasks.problemSolution && beginnerTasks.problemSolution.prompts) {
+                beginnerTasks.problemSolution.prompts.forEach(prompt => {
+                    const solution = taskSpecificAnswers[prompt.id] || 'No solution provided';
+                    userAnswersFormattedStrings.push(`Problem: ${t[prompt.labelKey]}\nYour Solution: ${solution}`);
+                });
+            }
+            if (userAnswersFormattedStrings.length === 0) {
+                userAnswersFormattedStrings.push("User has not provided any solutions yet.");
+            }
         } else if (taskKey === 'iTask2') {
             const caseContexts = intermediateTasks.caseStudy.cases.map(caseItem =>
                 `Case: ${t[caseItem.titleKey]}\nDescription: ${t[caseItem.descKey.replace(/<[^>]*>?/gm, '')]}`
@@ -592,7 +616,7 @@ const DebatingModule = () => {
                                 disabled={isAiLoading && activeChatTaskKey === 'bTask1'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
-                                {isAiLoading && activeChatTaskKey === 'bTask1' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                                {t.discussAiBtn || 'Discuss with AI'}
                             </button>
                         </div>
                     )}
@@ -620,7 +644,45 @@ const DebatingModule = () => {
                        {beginnerTasks.twoSides.topics.map(topicKey => <li key={topicKey}>{t[topicKey]}</li>)}
                     </ul>
                 </TaskCard>
-                <ProblemSolutionTask taskData={beginnerTasks.problemSolution} t={t} color="indigo" />
+                <ProblemSolutionTask
+                    taskData={beginnerTasks.problemSolution}
+                    t={t}
+                    color="indigo"
+                    taskKey="bTask3"
+                    answers={answers}
+                    onAnswerChange={handleAnswerChange}
+                    onSubmit={() => handleSubmit('bTask3')}
+                    disabled={isAiLoading}
+                >
+                    {/* AI Interaction UI for bTask3, to be passed as children */}
+                    {showAiButtons['bTask3'] && !currentErrors['bTask3'] && (
+                        <div> {/* Wrapper for Discuss with AI button */}
+                            <button
+                                onClick={() => handleAskAI_Debate('bTask3')}
+                                disabled={isAiLoading && activeChatTaskKey === 'bTask3'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {t.discussAiBtn || 'Discuss with AI'}
+                            </button>
+                        </div>
+                    )}
+                    {currentErrors['bTask3'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask3']}</p>}
+                    {activeChatTaskKey === 'bTask3' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('bTask3', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, bTask3: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
+                </ProblemSolutionTask>
             </LevelSection>
 
             <LevelSection title={t.intermediateLevel} colorClass="text-green-700">
@@ -652,7 +714,7 @@ const DebatingModule = () => {
                                 disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
-                                {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                                {t.discussAiBtn || 'Discuss with AI'}
                             </button>
                         </div>
                     )}
@@ -699,7 +761,7 @@ const DebatingModule = () => {
                                 disabled={isAiLoading && activeChatTaskKey === 'iTask3'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
-                                {isAiLoading && activeChatTaskKey === 'iTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                                {t.discussAiBtn || 'Discuss with AI'}
                             </button>
                         </div>
                     )}
@@ -753,7 +815,7 @@ const DebatingModule = () => {
                                 disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
-                                {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                                {t.discussAiBtn || 'Discuss with AI'}
                             </button>
                         </div>
                     )}
@@ -798,7 +860,7 @@ const DebatingModule = () => {
                                 disabled={isAiLoading && activeChatTaskKey === 'aTask3'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
-                                {isAiLoading && activeChatTaskKey === 'aTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                                {t.discussAiBtn || 'Discuss with AI'}
                             </button>
                         </div>
                     )}
