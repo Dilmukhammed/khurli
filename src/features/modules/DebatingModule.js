@@ -580,17 +580,21 @@ const DebatingModule = () => {
                         onAnswerChange={handleAnswerChange}
                         disabled={isAiLoading}
                     />
-                    <SubmitButton onClick={() => handleSubmit('bTask1')} color="indigo" disabled={isAiLoading}>
-                        {t.submitBtn}
-                    </SubmitButton>
+                    <div>
+                        <SubmitButton onClick={() => handleSubmit('bTask1')} color="indigo" disabled={isAiLoading}>
+                            {t.submitBtn}
+                        </SubmitButton>
+                    </div>
                     {showAiButtons['bTask1'] && !currentErrors['bTask1'] && (
-                        <button
-                            onClick={() => handleAskAI_Debate('bTask1')}
-                            disabled={isAiLoading && activeChatTaskKey === 'bTask1'}
-                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                        >
-                            {isAiLoading && activeChatTaskKey === 'bTask1' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
-                        </button>
+                        <div>
+                            <button
+                                onClick={() => handleAskAI_Debate('bTask1')}
+                                disabled={isAiLoading && activeChatTaskKey === 'bTask1'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'bTask1' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                            </button>
+                        </div>
                     )}
                     {currentErrors['bTask1'] && <p className="text-red-500 mt-2">{currentErrors['bTask1']}</p>}
                     {activeChatTaskKey === 'bTask1' && (
@@ -636,17 +640,21 @@ const DebatingModule = () => {
                         onAnswerChange={handleAnswerChange}
                         disabled={isAiLoading}
                     />
-                    <SubmitButton onClick={() => handleSubmit('iTask2')} color="green" disabled={isAiLoading}>
-                        {t.submitBtn}
-                    </SubmitButton>
+                    <div>
+                        <SubmitButton onClick={() => handleSubmit('iTask2')} color="green" disabled={isAiLoading}>
+                            {t.submitBtn}
+                        </SubmitButton>
+                    </div>
                     {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
-                        <button
-                            onClick={() => handleAskAI_Debate('iTask2')}
-                            disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
-                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                        >
-                            {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
-                        </button>
+                        <div>
+                            <button
+                                onClick={() => handleAskAI_Debate('iTask2')}
+                                disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                            </button>
+                        </div>
                     )}
                     {currentErrors['iTask2'] && <p className="text-red-500 mt-2">{currentErrors['iTask2']}</p>}
                     {activeChatTaskKey === 'iTask2' && (
@@ -679,17 +687,21 @@ const DebatingModule = () => {
                             ></textarea>
                         </div>
                     ))}
-                    <SubmitButton onClick={() => handleSubmit('iTask3')} color="green" disabled={isAiLoading}>
-                        {t.submitBtn}
-                    </SubmitButton>
+                    <div>
+                        <SubmitButton onClick={() => handleSubmit('iTask3')} color="green" disabled={isAiLoading}>
+                            {t.submitBtn}
+                        </SubmitButton>
+                    </div>
                     {showAiButtons['iTask3'] && !currentErrors['iTask3'] && (
-                        <button
-                            onClick={() => handleAskAI_Debate('iTask3')}
-                            disabled={isAiLoading && activeChatTaskKey === 'iTask3'}
-                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                        >
-                            {isAiLoading && activeChatTaskKey === 'iTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
-                        </button>
+                        <div>
+                            <button
+                                onClick={() => handleAskAI_Debate('iTask3')}
+                                disabled={isAiLoading && activeChatTaskKey === 'iTask3'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'iTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                            </button>
+                        </div>
                     )}
                     {currentErrors['iTask3'] && <p className="text-red-500 mt-2">{currentErrors['iTask3']}</p>}
                     {activeChatTaskKey === 'iTask3' && (
@@ -729,17 +741,21 @@ const DebatingModule = () => {
                         selectItemKey="aTask2_selectedIssue"
                         textareaItemKey="aTask2_policyProposalText"
                     />
-                    <SubmitButton onClick={() => handleSubmit('aTask2')} color="red" disabled={isAiLoading}>
-                        {t.submitBtn}
-                    </SubmitButton>
+                    <div>
+                        <SubmitButton onClick={() => handleSubmit('aTask2')} color="red" disabled={isAiLoading}>
+                            {t.submitBtn}
+                        </SubmitButton>
+                    </div>
                     {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
-                        <button
-                            onClick={() => handleAskAI_Debate('aTask2')}
-                            disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
-                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                        >
-                            {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
-                        </button>
+                        <div>
+                            <button
+                                onClick={() => handleAskAI_Debate('aTask2')}
+                                disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                            </button>
+                        </div>
                     )}
                     {currentErrors['aTask2'] && <p className="text-red-500 mt-2">{currentErrors['aTask2']}</p>}
                     {activeChatTaskKey === 'aTask2' && (
@@ -770,17 +786,21 @@ const DebatingModule = () => {
                         selectItemKey="aTask3_selectedTopic"
                         textareaItemKey="aTask3_speechText"
                     />
-                    <SubmitButton onClick={() => handleSubmit('aTask3')} color="red" disabled={isAiLoading}>
-                        {t.submitBtn}
-                    </SubmitButton>
+                    <div>
+                        <SubmitButton onClick={() => handleSubmit('aTask3')} color="red" disabled={isAiLoading}>
+                            {t.submitBtn}
+                        </SubmitButton>
+                    </div>
                     {showAiButtons['aTask3'] && !currentErrors['aTask3'] && (
-                        <button
-                            onClick={() => handleAskAI_Debate('aTask3')}
-                            disabled={isAiLoading && activeChatTaskKey === 'aTask3'}
-                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                        >
-                            {isAiLoading && activeChatTaskKey === 'aTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
-                        </button>
+                        <div>
+                            <button
+                                onClick={() => handleAskAI_Debate('aTask3')}
+                                disabled={isAiLoading && activeChatTaskKey === 'aTask3'}
+                                className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'aTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                            </button>
+                        </div>
                     )}
                     {currentErrors['aTask3'] && <p className="text-red-500 mt-2">{currentErrors['aTask3']}</p>}
                     {activeChatTaskKey === 'aTask3' && (
