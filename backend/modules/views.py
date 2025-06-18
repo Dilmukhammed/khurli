@@ -68,47 +68,49 @@ class GeminiProverbExplanationView(APIView):
 
             if user_query: # Follow-up for mistake explanation
                 prompt_parts = [
-                    "You are an AI assistant who previously provided an explanation about cultural proverbs based on the following context:",
+                    "You are an AI assistant who previously provided an explanation to the user about cultural proverbs.",
+                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
                     f"Original Context/Questions: {block_context}",
-                    f"User's Answers to that context: {formatted_user_answers}",
+                    f"Your original answers to that context were: {formatted_user_answers}",
                     f"Correct Answers for that context: {formatted_correct_answers}",
                     topic_relevance_instruction,
-                    "The user now has a specific follow-up question regarding this context or your previous explanation.",
-                    f"User's follow-up question: '{user_query}'",
+                    f"The user (you) now has a follow-up question: '{user_query}'. Please answer this question directly.",
                     "Please provide a concise answer ONLY to this follow-up question. Do not repeat the full initial explanation unless a small part of it is absolutely necessary. Focus on the new question."
                 ]
             else: # Initial mistake explanation
                 prompt_parts = [
                     "You are an AI assistant helping a user learn about cultural proverbs.",
+                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
                     "The user was presented with the following context/questions related to proverbs:",
                     f"Context/Questions: {block_context}",
-                    f"The user's answers were: {formatted_user_answers}",
+                    f"Your answers were: {formatted_user_answers}",
                     f"The correct answers are: {formatted_correct_answers}",
                     topic_relevance_instruction,
-                    "Please analyze the user's answers based on the correct answers.",
-                    "Provide brief, clear explanations for any mistakes the user made. If there are no mistakes, acknowledge that.",
-                    "After your explanation, please offer to answer any further questions the user might have."
+                    "Please analyze your answers based on the correct answers.",
+                    "Provide brief, clear explanations for any mistakes you made. If there are no mistakes in your answers, please acknowledge that.",
+                    "After your explanation, please ask if you have any further questions."
                 ]
         elif interaction_type == 'discuss_open_ended':
             if user_query: # Follow-up within a discussion
                 prompt_parts = [
-                    "You are an AI assistant facilitating a discussion on a cultural proverb or topic.",
+                    "You are an AI assistant facilitating a discussion with the user on a cultural proverb or topic.",
+                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
                     f"The main discussion prompt/context was: {block_context}",
-                    f"The user initially responded with: {user_written_response}", # This is the user's main essay/answer
+                    f"Your initial response was: {user_written_response}", # This is the user's main essay/answer
                     topic_relevance_instruction,
-                    "The user now has a follow-up question or comment:",
-                    f"User's follow-up: '{user_query}'",
+                    f"The user (you) now has a follow-up question or comment: '{user_query}'. Please respond to this follow-up directly.",
                     "Please provide a thoughtful and concise response to this follow-up, keeping the discussion going. Encourage deeper reflection or offer related insights if appropriate. Do not repeat your entire previous feedback unless a small part is essential for context."
                 ]
             else: # Initial feedback on a discussion response
                 prompt_parts = [
-                    "You are an AI assistant designed to provide feedback and facilitate discussion on user responses to open-ended questions about cultural topics/proverbs.",
+                    "You are an AI assistant designed to provide feedback and facilitate discussion on the user's response to open-ended questions about cultural topics/proverbs.",
+                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
                     f"The discussion prompt/context given to the user was: {block_context}",
-                    f"The user has provided the following response/input: {user_written_response}",
+                    f"Your response was: {user_written_response}",
                     topic_relevance_instruction,
-                    "Please review the user's response. Provide constructive feedback on their input (e.g., acknowledge their points, suggest areas for deeper thought, offer different perspectives, or check for understanding if applicable).",
+                    "Please review your response. Provide constructive feedback on your input (e.g., acknowledge your points, suggest areas for deeper thought, offer different perspectives, or check for understanding if applicable).",
                     "Your feedback should be encouraging and aim to stimulate further thought.",
-                    "After providing your feedback on their initial response, please invite the user to ask further questions or discuss related ideas."
+                    "After providing your feedback on your initial response, please invite you to ask further questions or discuss related ideas."
                 ]
         else:
             return Response({"error": "Invalid interaction_type specified."}, status=status.HTTP_400_BAD_REQUEST)
