@@ -18,16 +18,35 @@ class UserModuleProgressSerializer(serializers.ModelSerializer):
         return progress
 
 class GeminiExplanationRequestSerializer(serializers.Serializer):
-    block_context = serializers.CharField()
+    INTERACTION_TYPE_CHOICES = [
+        ('explain_mistakes', 'Explain Mistakes'),
+        ('discuss_open_ended', 'Discuss Open-ended'),
+    ]
+
+    block_context = serializers.CharField(
+        help_text="The context or questions from the learning block."
+    )
     user_answers = serializers.ListField(
         child=serializers.CharField(allow_blank=True),
-        allow_empty=True
+        allow_empty=True,
+        help_text="User's answers to questions, or their written input for discussion tasks."
     )
     correct_answers = serializers.ListField(
         child=serializers.CharField(allow_blank=True),
-        allow_empty=True
+        required=False, # Make optional
+        allow_empty=True, # Already True, but good to be explicit
+        help_text="Correct answers, if applicable (e.g., for mistake explanation)."
     )
-    user_query = serializers.CharField(required=False, allow_blank=True)
+    user_query = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="User's follow-up question to the AI."
+    )
+    interaction_type = serializers.ChoiceField(
+        choices=INTERACTION_TYPE_CHOICES,
+        default='explain_mistakes',
+        help_text="The type of AI interaction requested."
+    )
 
 class GeminiExplanationResponseSerializer(serializers.Serializer):
     explanation = serializers.CharField()

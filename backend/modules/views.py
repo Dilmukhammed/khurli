@@ -32,9 +32,15 @@ class GeminiProverbExplanationView(APIView):
 
         validated_data = request_serializer.validated_data
         block_context = validated_data.get('block_context')
-        user_answers = validated_data.get('user_answers')
-        correct_answers = validated_data.get('correct_answers')
+        user_answers_list = validated_data.get('user_answers') # This is a list of strings
+        correct_answers_list = validated_data.get('correct_answers', []) # Default to empty list if not provided
         user_query = validated_data.get('user_query')
+        interaction_type = validated_data.get('interaction_type')
+
+        # Consolidate user's written response for discussion into a single string if it's from user_answers_list
+        user_written_response = ""
+        if interaction_type == 'discuss_open_ended' and user_answers_list:
+            user_written_response = "\n".join(user_answers_list) # Join if multiple lines/inputs were captured in the list
 
         # 2. Get Gemini API Key
         api_key = settings.GEMINI_API_KEY
@@ -53,36 +59,62 @@ class GeminiProverbExplanationView(APIView):
             )
 
         # 3. Construct the prompt
-        topic_relevance_instruction = "IMPORTANT: Confine your entire response to the subject matter of the provided proverbs, user's answers, and direct questions about them. Do not provide information or discuss topics outside of this specific context."
+        topic_relevance_instruction = "IMPORTANT: Confine your entire response to the subject matter of the provided context, user's input, and direct questions about them. Do not provide information or discuss topics outside of this specific context."
+        prompt_parts = []
 
-        if user_query:
-            # Prompt for a follow-up question
-            prompt_parts = [
-                "You are an AI assistant who previously provided an explanation about cultural proverbs based on the following context:",
-                f"Original Context/Questions: {block_context}",
-                f"User's Answers to that context: {'; '.join(user_answers)}",
-                f"Correct Answers for that context: {'; '.join(correct_answers)}",
-                topic_relevance_instruction, # Added instruction
-                "The user now has a specific follow-up question regarding this context or your previous explanation.",
-                f"User's follow-up question: '{user_query}'",
-                "Please provide a concise answer ONLY to this follow-up question. Do not repeat the full initial explanation unless a small part of it is absolutely necessary to answer the current question. Focus on the new question."
-            ]
+        if interaction_type == 'explain_mistakes':
+            formatted_user_answers = '; '.join(user_answers_list)
+            formatted_correct_answers = '; '.join(correct_answers_list) if correct_answers_list else "Not applicable for this query."
+
+            if user_query: # Follow-up for mistake explanation
+                prompt_parts = [
+                    "You are an AI assistant who previously provided an explanation about cultural proverbs based on the following context:",
+                    f"Original Context/Questions: {block_context}",
+                    f"User's Answers to that context: {formatted_user_answers}",
+                    f"Correct Answers for that context: {formatted_correct_answers}",
+                    topic_relevance_instruction,
+                    "The user now has a specific follow-up question regarding this context or your previous explanation.",
+                    f"User's follow-up question: '{user_query}'",
+                    "Please provide a concise answer ONLY to this follow-up question. Do not repeat the full initial explanation unless a small part of it is absolutely necessary. Focus on the new question."
+                ]
+            else: # Initial mistake explanation
+                prompt_parts = [
+                    "You are an AI assistant helping a user learn about cultural proverbs.",
+                    "The user was presented with the following context/questions related to proverbs:",
+                    f"Context/Questions: {block_context}",
+                    f"The user's answers were: {formatted_user_answers}",
+                    f"The correct answers are: {formatted_correct_answers}",
+                    topic_relevance_instruction,
+                    "Please analyze the user's answers based on the correct answers.",
+                    "Provide brief, clear explanations for any mistakes the user made. If there are no mistakes, acknowledge that.",
+                    "After your explanation, please offer to answer any further questions the user might have."
+                ]
+        elif interaction_type == 'discuss_open_ended':
+            if user_query: # Follow-up within a discussion
+                prompt_parts = [
+                    "You are an AI assistant facilitating a discussion on a cultural proverb or topic.",
+                    f"The main discussion prompt/context was: {block_context}",
+                    f"The user initially responded with: {user_written_response}", # This is the user's main essay/answer
+                    topic_relevance_instruction,
+                    "The user now has a follow-up question or comment:",
+                    f"User's follow-up: '{user_query}'",
+                    "Please provide a thoughtful and concise response to this follow-up, keeping the discussion going. Encourage deeper reflection or offer related insights if appropriate. Do not repeat your entire previous feedback unless a small part is essential for context."
+                ]
+            else: # Initial feedback on a discussion response
+                prompt_parts = [
+                    "You are an AI assistant designed to provide feedback and facilitate discussion on user responses to open-ended questions about cultural topics/proverbs.",
+                    f"The discussion prompt/context given to the user was: {block_context}",
+                    f"The user has provided the following response/input: {user_written_response}",
+                    topic_relevance_instruction,
+                    "Please review the user's response. Provide constructive feedback on their input (e.g., acknowledge their points, suggest areas for deeper thought, offer different perspectives, or check for understanding if applicable).",
+                    "Your feedback should be encouraging and aim to stimulate further thought.",
+                    "After providing your feedback on their initial response, please invite the user to ask further questions or discuss related ideas."
+                ]
         else:
-            # Prompt for an initial explanation
-            prompt_parts = [
-                "You are an AI assistant helping a user learn about cultural proverbs.",
-                "The user was presented with the following context/questions related to proverbs:",
-                f"Context/Questions: {block_context}",
-                f"The user's answers were: {'; '.join(user_answers)}", # Join list for readability in prompt
-                f"The correct answers are: {'; '.join(correct_answers)}", # Join list
-                topic_relevance_instruction, # Added instruction
-                "Please analyze the user's answers based on the correct answers.",
-                "Provide brief, clear explanations for any mistakes the user made. If there are no mistakes, acknowledge that.",
-                "After your explanation, please offer to answer any further questions the user might have about these proverbs or their explanations."
-            ]
+            return Response({"error": "Invalid interaction_type specified."}, status=status.HTTP_400_BAD_REQUEST)
 
         final_prompt = "\n\n".join(prompt_parts)
-        # Add a log to see the final prompt being sent to Gemini (optional, but good for debugging this step)
+        print(f"Gemini Interaction Type: {interaction_type}") # Log interaction type
         print(f"Gemini Final Prompt:\n{final_prompt}")
 
         # 4. Initialize the Gemini model and generate content

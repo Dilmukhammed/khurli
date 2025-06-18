@@ -20,6 +20,7 @@ const translations = {
         selectOptionDefault: "Выберите...",
         checkAnswersBtn: "Проверить ответы",
         askAiBtn: "Спросить ИИ",
+        discussAiBtn: "Обсудить с ИИ",
         allCorrectMessage: "Все ответы верны!",
         someIncorrectMessage: "Некоторые ответы неверны. Проверьте выделенные.",
         submissionReceived: "Ваши ответы были отправлены.",
@@ -148,6 +149,7 @@ const translations = {
         selectOptionDefault: "Select...",
         checkAnswersBtn: "Check Answers",
         askAiBtn: "Ask AI",
+        discussAiBtn: "Discuss with AI",
         allCorrectMessage: "All answers are correct!",
         someIncorrectMessage: "Some answers are incorrect. Check the highlighted ones.",
         submissionReceived: "Your answers have been submitted.",
@@ -356,10 +358,12 @@ const CulturalProverbsModule = () => {
     // Helper function to get task details for AI
     const getTaskDetailsForAI = (taskKey) => {
         const taskAnswers = answers[taskKey] || {};
-        let taskCorrectAnswers = {};
+        let taskCorrectAnswers = {}; // For explain_mistakes
         let taskBlockContext = t(`${taskKey}Title`) + "\n" + t(`${taskKey}Desc`);
+        let interaction_type_to_send = 'explain_mistakes'; // Default
 
         if (taskKey === 'beginnerTask1') {
+            interaction_type_to_send = 'explain_mistakes';
             taskCorrectAnswers = { q1: 'a', q2: 'b', q3: 'c', q4: 'd', q5: 'e' };
             const proverbs = [
                  { key: 'q1', uz: "1. Yaxshi do'st - qiyin kunda bilinadi", en: "a) A friend in need is a friend indeed"},
@@ -370,6 +374,7 @@ const CulturalProverbsModule = () => {
             ];
             taskBlockContext += "\n\nProverbs and Options:\n" + proverbs.map(p => `${p.uz} -> English Options: ${p.en.substring(0,1)}`).join("\n");
         } else if (taskKey === 'beginnerTask2') {
+            interaction_type_to_send = 'explain_mistakes';
             taskCorrectAnswers = { q1: 'b', q2: 'a', q3: 'b' };
              const questions = [
                  { key: 'q1', proverb: '1. "Yaxshi do‘st – qiyin kunda bilinadi."' },
@@ -387,11 +392,20 @@ const CulturalProverbsModule = () => {
                  '"Patience is a ___." (virtue, mistake, problem)',
              ];
              taskBlockContext += "\n\nFill-in Proverbs (full list):\n" + fillInProverbs.join("\n");
+        } else if (taskKey === 'beginnerTask3') { // Corrected this line from the original prompt, was intermediateTask1
+            interaction_type_to_send = 'explain_mistakes';
+            taskCorrectAnswers = { q1: 'indeed', q2: 'gain', q3: 'fire', q4: 'nest', q5: 'virtue' };
+             const fillInProverbs = [
+                 '"A friend in need is a friend ___." (indeed, always, never)',
+                 '"No pain, no ___." (gain, rain, train)',
+                 '"Out of the frying pan, into the ___." (fire, ice, water)',
+                 '"Little by little, the bird builds its ___." (nest, house, tree)',
+                 '"Patience is a ___." (virtue, mistake, problem)',
+             ];
+             taskBlockContext += "\n\nFill-in Proverbs (full list):\n" + fillInProverbs.join("\n");
         } else if (taskKey === 'intermediateTask1') {
+            interaction_type_to_send = 'explain_mistakes';
             taskCorrectAnswers = { q1: 'd', q2: 'a', q3: 'c', q4: 'e', q5: 'b' };
-            // For intermediateTask1, the proverbs and situations are already in the component's JSX.
-            // We can reconstruct a simplified context or assume the title/desc is enough for now.
-            // For a more robust solution, task content would ideally come from a structured source.
             const proverbsAndSituations = [
               { proverb: "1. Yaxshi do'st - qiyin kunda bilinadi. (A friend in need is a friend indeed)", situationKey: 'intermediateTask1SitD' },
               { proverb: "2. Mehnat qilmagan - rohat topmas (No pain, no gain)", situationKey: 'intermediateTask1SitA' },
@@ -401,15 +415,51 @@ const CulturalProverbsModule = () => {
             ];
             taskBlockContext += "\n\nProverbs and Situations:\n" +
                 proverbsAndSituations.map(item => `${item.proverb} -> Situation: ${t(item.situationKey)}`).join("\n");
+        } else if (taskKey === 'intermediateTask2') {
+            interaction_type_to_send = 'discuss_open_ended';
+            taskCorrectAnswers = {}; // No specific "correct" answers for open discussion
+            // Context includes title, description, and the proverbs to be discussed
+            taskBlockContext = `${t('intermediateTask2Title')}\n${t('intermediateTask2Desc')}\n\nProverbs for discussion:\n1. ${t('intermediateTask2.q1.proverb') || "Ko‘p bilan maslahat qil, lekin o‘zing qaror qil."}\n2. ${t('intermediateTask2.q2.proverb') || "Yaxshi so‘z – jon ozig‘i."}\n3. ${t('intermediateTask2.q3.proverb') || "Daryodan o‘tib, eshakni urma."}`;
+
+            const userResponses = [
+                `Response to proverb 1: ${answers.intermediateTask2?.i2_q1_response || '(Not answered)'}`,
+                `Response to proverb 2: ${answers.intermediateTask2?.i2_q2_response || '(Not answered)'}`,
+                `Response to proverb 3: ${answers.intermediateTask2?.i2_q3_response || '(Not answered)'}`
+            ];
+            const combinedUserAnswers = userResponses.join("\n\n");
+
+            return { // Return early for this specific structure
+                block_context: taskBlockContext,
+                user_answers: [combinedUserAnswers], // Send as a list with one item
+                correct_answers: [], // Empty list for discussions
+                interaction_type: interaction_type_to_send,
+            };
+        } else if (taskKey === 'intermediateTask5') {
+            interaction_type_to_send = 'discuss_open_ended';
+            taskCorrectAnswers = {};
+            taskBlockContext = `${t('intermediateTask5Title')}\n${t('intermediateTask5Desc')}\n\nProverbs to choose from:\n- ${t('intermediateTask5Prov1')}\n- ${t('intermediateTask5Prov2')}\n- ${t('intermediateTask5Prov3')}`;
+            const userStory = answers.intermediateTask5?.i5_story || '(Not answered)';
+            return { // Return early
+                block_context: taskBlockContext,
+                user_answers: [userStory],
+                correct_answers: [],
+                interaction_type: interaction_type_to_send,
+            };
         } else {
-            // Fallback for tasks not explicitly configured for AI
-            return { block_context: null, user_answers: [], correct_answers: [] };
+            // Fallback for tasks not explicitly configured for AI or default to explain_mistakes if not caught above
+             // For tasks that reach here, they are likely 'explain_mistakes' by default or unconfigured.
+            // If taskCorrectAnswers remains empty and it's 'explain_mistakes', AI will just comment on user_answers.
+            // This part could be enhanced if more tasks are strictly 'explain_mistakes' and need explicit setup.
+            if (Object.keys(taskCorrectAnswers).length === 0 && interaction_type_to_send === 'explain_mistakes') {
+                 console.warn(`Task ${taskKey} is 'explain_mistakes' but has no correct answers defined in getTaskDetailsForAI.`);
+            }
         }
 
-        return {
+        return { // Default return structure, mainly for 'explain_mistakes'
             block_context: taskBlockContext,
             user_answers: formatAnswersForAI(taskAnswers),
             correct_answers: formatAnswersForAI(taskCorrectAnswers),
+            interaction_type: interaction_type_to_send,
         };
     };
 
@@ -446,6 +496,7 @@ const CulturalProverbsModule = () => {
 
     const handleSubmit = (taskKey) => { // For open-ended tasks
          setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t('submissionReceived') }}));
+         setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Explicitly show AI button
     };
 
     const isTaskCompleted = (taskKey) => completedTasks[taskKey] === 'completed';
@@ -858,18 +909,57 @@ const CulturalProverbsModule = () => {
                                 <h4 className="font-semibold mb-2">{t('intermediateTask2Title')}</h4>
                                 <p className="mb-3 text-sm text-gray-600">{t('intermediateTask2Desc')}</p>
                                 {[
-                                    { key: 'q1', proverb: '1. "Ko‘p bilan maslahat qil, lekin o‘zing qaror qil." (Take advice from many, but make your own decision.)', label: t('whatDoesItMean') },
-                                    { key: 'q2', proverb: '2. "Yaxshi so‘z – jon ozig‘i." (A kind word is food for the soul.)', label: t('whyIsImportant') },
-                                    { key: 'q3', proverb: '3. "Daryodan o‘tib, eshakni urma." (Don’t beat the donkey after crossing the river.)', label: t('whatLesson') },
-                                ].map(item => (
-                                    <div key={item.key} className="mb-4">
-                                        <p className="font-medium">{item.proverb}</p>
-                                        <label className="block text-sm font-medium text-gray-700 mt-1">{item.label}</label>
-                                        <textarea className="border rounded px-2 py-1 w-full h-16 mt-1" placeholder="..."></textarea>
-                                    </div>
-                                ))}
-                                <button onClick={() => handleSubmit('intermediateTask2')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                    // Intermediate Task 2: Textareas
+                                    {
+                                        // Key for proverb text lookup, adjust if your translation keys are different
+                                        // These are illustrative; actual keys might be more complex or direct text.
+                                        // For this example, I'll assume the proverb text is part of the item object passed to map.
+                                        // The prompt asks for t('intermediateTask2.q1.proverb') etc. which is not standard i18n.
+                                        // I'll use the existing structure which seems to imply item.proverb is already translated or is the key.
+                                        [
+                                            { key: 'i2_q1', proverbKey: 'intermediateTask2.q1.proverb_placeholder', labelKey: 'whatDoesItMean', answerKey: 'i2_q1_response', originalProverbText: "1. \"Ko‘p bilan maslahat qil, lekin o‘zing qaror qil.\" (Take advice from many, but make your own decision.)" },
+                                            { key: 'i2_q2', proverbKey: 'intermediateTask2.q2.proverb_placeholder', labelKey: 'whyIsImportant', answerKey: 'i2_q2_response', originalProverbText: "2. \"Yaxshi so‘z – jon ozig‘i.\" (A kind word is food for the soul.)" },
+                                            { key: 'i2_q3', proverbKey: 'intermediateTask2.q3.proverb_placeholder', labelKey: 'whatLesson', answerKey: 'i2_q3_response', originalProverbText: "3. \"Daryodan o‘tib, eshakni urma.\" (Don’t beat the donkey after crossing the river.)" },
+                                        ].map(item => (
+                                            <div key={item.key} className="mb-4">
+                                                <p className="font-medium">{item.originalProverbText}</p>
+                                                <label className="block text-sm font-medium text-gray-700 mt-1">{t(item.labelKey)}</label>
+                                                <textarea
+                                                    className="border rounded px-2 py-1 w-full h-16 mt-1"
+                                                    placeholder="..."
+                                                    value={answers.intermediateTask2?.[item.answerKey] || ''}
+                                                    onChange={(e) => handleAnswerChange('intermediateTask2', item.answerKey, e.target.value)}
+                                                    disabled={isTaskCompleted('intermediateTask2') || progressLoading}
+                                                />
+                                            </div>
+                                        ))
+                                    }
+                                <button onClick={() => handleSubmit('intermediateTask2')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask2') || progressLoading}>{t('submitBtn')}</button>
                                 {results.intermediateTask2 && <div className={`result-message ${results.intermediateTask2.type}`}>{results.intermediateTask2.message}</div>}
+                                {showAiButtons.intermediateTask2 && !isTaskCompleted('intermediateTask2') &&
+                                    <button
+                                        onClick={() => handleAskAI('intermediateTask2')}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'intermediateTask2'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'intermediateTask2' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'intermediateTask2' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('intermediateTask2', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 3 (Open-ended) */}
@@ -906,8 +996,9 @@ const CulturalProverbsModule = () => {
                                         <textarea className="border rounded px-2 py-1 w-full h-16 mt-2" placeholder={language === 'ru' ? 'Объяснение...' : 'Explanation...'}></textarea>
                                     </div>
                                 ))}
-                                <button onClick={() => handleSubmit('intermediateTask4')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                <button onClick={() => handleSubmit('intermediateTask4')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask4') || progressLoading}>{t('submitBtn')}</button>
                                 {results.intermediateTask4 && <div className={`result-message ${results.intermediateTask4.type}`}>{results.intermediateTask4.message}</div>}
+                                {/* AI Chat for intermediateTask4 would go here if implemented in the future */}
                             </div>
 
                             {/* Task 5 (Open-ended) */}
@@ -918,9 +1009,39 @@ const CulturalProverbsModule = () => {
                                 <ul className="list-disc list-inside text-sm text-gray-600 mb-3">
                                     <li>{t('intermediateTask5Prov1')}</li><li>{t('intermediateTask5Prov2')}</li><li>{t('intermediateTask5Prov3')}</li>
                                 </ul>
-                                <textarea className="border rounded px-2 py-1 w-full h-32" placeholder={language === 'ru' ? 'Ваша история...' : 'Your story...'}></textarea>
-                                <button onClick={() => handleSubmit('intermediateTask5')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                <textarea
+                                    className="border rounded px-2 py-1 w-full h-32"
+                                    placeholder={language === 'ru' ? 'Ваша история...' : 'Your story...'}
+                                    value={answers.intermediateTask5?.i5_story || ''}
+                                    onChange={(e) => handleAnswerChange('intermediateTask5', 'i5_story', e.target.value)}
+                                    disabled={isTaskCompleted('intermediateTask5') || progressLoading}
+                                />
+                                <button onClick={() => handleSubmit('intermediateTask5')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask5') || progressLoading}>{t('submitBtn')}</button>
                                 {results.intermediateTask5 && <div className={`result-message ${results.intermediateTask5.type}`}>{results.intermediateTask5.message}</div>}
+                                {showAiButtons.intermediateTask5 && !isTaskCompleted('intermediateTask5') &&
+                                    <button
+                                        onClick={() => handleAskAI('intermediateTask5')}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'intermediateTask5'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'intermediateTask5' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'intermediateTask5' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('intermediateTask5', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
