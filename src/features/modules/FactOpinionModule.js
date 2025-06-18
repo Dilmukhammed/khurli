@@ -193,7 +193,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                                 <label key={value} className="radio-label mr-4 inline-flex items-center cursor-pointer">
                                     <input
                                         type="radio"
-                                        name={`${taskId}-${q.id}`}
+                                        name={`${taskKey}-${q.id}`}
                                         value={value}
                                         checked={answers[q.id] === value}
                                         onChange={() => handleAnswerChange(q.id, value)}
@@ -353,17 +353,105 @@ export default function FactOpinionModule() {
                 else if (taskKey === 'bTask3') requestData.block_context = `${t.factBTask3Title}\n${t.factBTask3Desc}\nError: Missing detailed answer data.`;
                 else if (taskKey === 'aTask1') requestData.block_context = `${t.factATask1Title}\n${t.factATask1Desc}\nError: Missing detailed answer data.`;
             }
-        } else if (taskKey === "factBTask2") { // Example: Beginner Task 2 (Rewriting)
-            requestData.block_context = t.factBTask2Title + "\n" + t.factBTask2Desc;
-            const inputs = [];
-            // Example: if answers are { b2_q1_opinion: "...", b2_q2_fact: "..." }
-            Object.entries(taskSpecificMainAnswers).forEach(([key, value]) => {
-                if (value) inputs.push(`${key.replace('b2_', '')}: ${value}`);
-            });
-            requestData.user_inputs = inputs.length > 0 ? inputs : ["No input provided for this task yet."];
+        } else if (taskKey === "bTask2") { // Renamed from factBTask2 for consistency with itemKeys
             requestData.interaction_type = 'feedback_on_rewrite';
+            const taskSpecificAnswers = answers.bTask2 || {}; // Use answers.bTask2
+            const originalStatements = [ // Define source of truth for statements
+                { id: 'b2_op_uz_central_asia', type: 'fact', langText: {ru: "Факт: Узбекистан расположен в Центральной Азии.", en: "Fact: Uzbekistan is located in Central Asia."}, rewritePrompt: t.rewriteAsOpinion },
+                { id: 'b2_op_navruz_march_21', type: 'fact', langText: {ru: "Факт: Навруз празднуется 21 марта.", en: "Fact: Navruz is celebrated on March 21st."}, rewritePrompt: t.rewriteAsOpinion },
+                { id: 'b2_fact_uz_bread_better', type: 'opinion', langText: {ru: "Мнение: Узбекский хлеб лучше любого другого хлеба.", en: "Opinion: Uzbek bread is better than any other bread."}, rewritePrompt: t.rewriteAsFact },
+                { id: 'b2_fact_samsa_best', type: 'opinion', langText: {ru: "Мнение: Лучшее узбекское блюдо - самса.", en: "Opinion: The best Uzbek dish is samsa."}, rewritePrompt: t.rewriteAsFact }
+            ];
+
+            let contextParts = [`Task: ${t.factBTask2Title}`, `Description: ${t.factBTask2Desc.replace(/<[^>]*>?/gm, '')}`, "---"];
+            let userInputsFormatted = [];
+
+            originalStatements.forEach(stmt => {
+                const originalStatementText = stmt.langText[lang] || stmt.langText['en']; // Fallback to English
+                const rewriteInstruction = stmt.rewritePrompt; // This is already translated via t.rewriteAsOpinion etc.
+                const userAnswer = taskSpecificAnswers[stmt.id] || 'No rewrite provided.';
+
+                contextParts.push(`Original Statement (${stmt.type}): "${originalStatementText}"\nInstruction: ${rewriteInstruction}`);
+                userInputsFormatted.push(`For original "${originalStatementText.substring(0,30)}...": Your rewrite was: "${userAnswer}"`);
+            });
+
+            requestData.block_context = contextParts.join('\n\n');
+            requestData.user_inputs = userInputsFormatted.length > 0 ? userInputsFormatted : ["No input provided for this task yet."];
+
+        } else if (taskKey === 'iTask1') {
+            requestData.interaction_type = 'feedback_on_justification';
+            const taskSpecificAnswers = answers.iTask1 || {};
+            const originalStatements_iTask1 = [
+                { id: 'i1_bukhara_unesco_exp', langText: {ru: "Бухара является объектом Всемирного наследия ЮНЕСКО.", en: "Bukhara is a UNESCO World Heritage site."} },
+                { id: 'i1_samarkand_khiva_exp', langText: {ru: "Самарканд красивее Хивы.", en: "Samarkand is more beautiful than Khiva."} },
+                { id: 'i1_uz_population_exp', langText: {ru: "В Узбекистане проживает более 35 миллионов человек.", en: "Uzbekistan has more than 35 million people."} }
+            ];
+
+            let contextParts = [`Task: ${t.factITask1Title}`, `Description: ${t.factITask1Desc.replace(/<[^>]*>?/gm, '')}`, "---"];
+            let userInputsFormatted = [];
+
+            originalStatements_iTask1.forEach(stmt => {
+                const originalStatementText = stmt.langText[lang] || stmt.langText['en']; // Fallback to English
+                const userAnswer = taskSpecificAnswers[stmt.id] || 'No explanation provided.';
+
+                contextParts.push(`Statement: "${originalStatementText}"`);
+                userInputsFormatted.push(`For statement "${originalStatementText.substring(0,30)}...": Your explanation was: "${userAnswer}"`);
+            });
+
+            requestData.block_context = contextParts.join('\n\n');
+            requestData.user_inputs = userInputsFormatted.length > 0 ? userInputsFormatted : ["No explanation provided."];
+
+        } else if (taskKey === 'iTask2') {
+            requestData.interaction_type = 'discuss_statement_nature';
+            const taskSpecificAnswers = answers.iTask2 || {};
+            const originalStatements_iTask2 = [
+                 { id: 'i2_tashkent_dev_args', langText: {ru: "Утверждение: Ташкент - самый развитый город в Узбекистане.", en: "Statement: Tashkent is the most developed city in Uzbekistan."} },
+                 { id: 'i2_english_success_args', langText: {ru: "Утверждение: Изучение английского языка необходимо для успеха в Узбекистане.", en: "Statement: Learning English is necessary for success in Uzbekistan."} }
+            ];
+
+            let contextParts = [`Task: ${t.factITask2Title}`, `Description: ${t.factITask2Desc.replace(/<[^>]*>?/gm, '')}`, "---"];
+            let userInputsFormatted = [];
+
+            originalStatements_iTask2.forEach(stmt => {
+                const originalStatementText = stmt.langText[lang] || stmt.langText['en']; // Fallback to English
+                const userAnswer = taskSpecificAnswers[stmt.id] || 'No arguments provided.';
+
+                contextParts.push(`Statement for Debate: "${originalStatementText}"`);
+                userInputsFormatted.push(`Regarding "\${originalStatementText.substring(0,30)}...": Your arguments were: "\${userAnswer}"`);
+            });
+
+            requestData.block_context = contextParts.join('\n\n');
+            requestData.user_inputs = userInputsFormatted.length > 0 ? userInputsFormatted : ["No arguments provided."];
+
+        } else if (taskKey === 'aTask2') {
+            requestData.interaction_type = 'assist_fact_check';
+            const taskSpecificAnswers = answers.aTask2 || {};
+            const originalStatements_aTask2 = [
+                { idPrefix: 'verify1', langText: {ru: "Узбекистан был частью Советского Союза до 1991 года.", en: "Uzbekistan was part of the Soviet Union before 1991."} },
+                { idPrefix: 'verify2', langText: {ru: "Официальный язык Узбекистана - русский.", en: "The official language of Uzbekistan is Russian."} },
+                { idPrefix: 'verify3', langText: {ru: "В Узбекистане находится самая большая пустыня в Центральной Азии.", en: "Uzbekistan has the largest desert in Central Asia."} }
+            ];
+
+            let contextParts = [`Task: ${t.factATask2Title}`, `Description: ${t.factATask2Desc.replace(/<[^>]*>?/gm, '')}`, "---"];
+            let userInputsFormatted = [];
+
+            originalStatements_aTask2.forEach(stmt => {
+                const originalStatementText = stmt.langText[lang] || stmt.langText['en']; // Fallback to English
+                const userChoice = taskSpecificAnswers[`${stmt.idPrefix}_choice`] || 'Not answered';
+                const userExplanation = taskSpecificAnswers[`${stmt.idPrefix}_exp`] || 'No explanation.';
+
+                contextParts.push(`Statement to Fact-Check: "${originalStatementText}"`);
+                userInputsFormatted.push(`For statement "\${originalStatementText.substring(0,30)}...": Your assessment was '\${userChoice}'. Your explanation/correction: "\${userExplanation}"\`);
+            });
+
+            requestData.block_context = contextParts.join('\n\n');
+            requestData.user_inputs = userInputsFormatted.length > 0 ? userInputsFormatted : ["No input provided for this task."];
+            // correct_answers_data is omitted as the task is about user research & AI assistance, not checking against predefined answers here.
+
         } else if (Object.keys(taskSpecificMainAnswers).length > 0) {
              // Generic handler for other tasks that might have answers directly in the 'answers' state
+            // Ensure this doesn't accidentally catch tasks that should have more specific handling above
+            // if their `additionalData` was missing.
             const titleKey = `${taskKey}Title`;
             const descKey = `${taskKey}Desc`;
             requestData.block_context = t[titleKey] ? `${t[titleKey]}\n${t[descKey] || ''}` : `Context for ${taskKey}`;
@@ -572,36 +660,111 @@ export default function FactOpinionModule() {
                         <h3 className="text-xl font-semibold mb-3">{t.factITask1Title}</h3>
                         <p className="mb-4 text-sm text-gray-600">{t.factITask1Desc}</p>
                         <div className="space-y-6">
-                            <div>
-                                <p className="font-medium">1. {lang === 'ru' ? 'Бухара является объектом Всемирного наследия ЮНЕСКО.' : 'Bukhara is a UNESCO World Heritage site.'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="2" placeholder={t.placeholderExplanation}></textarea>
-                            </div>
-                            <div>
-                                <p className="font-medium">2. {lang === 'ru' ? 'Самарканд красивее Хивы.' : 'Samarkand is more beautiful than Khiva.'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="2" placeholder={t.placeholderExplanation}></textarea>
-                            </div>
-                            <div>
-                                <p className="font-medium">3. {lang === 'ru' ? 'В Узбекистане проживает более 35 миллионов человек.' : 'Uzbekistan has more than 35 million people.'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="2" placeholder={t.placeholderExplanation}></textarea>
-                            </div>
+                            {[
+                                { itemKey: 'i1_bukhara_unesco_exp', originalTextKey: 'Bukhara is a UNESCO World Heritage site.', originalTextRu: 'Бухара является объектом Всемирного наследия ЮНЕСКО.' },
+                                { itemKey: 'i1_samarkand_khiva_exp', originalTextKey: 'Samarkand is more beautiful than Khiva.', originalTextRu: 'Самарканд красивее Хивы.' },
+                                { itemKey: 'i1_uz_population_exp', originalTextKey: 'Uzbekistan has more than 35 million people.', originalTextRu: 'В Узбекистане проживает более 35 миллионов человек.' }
+                            ].map((item, index) => (
+                                <div key={item.itemKey}>
+                                    <p className="font-medium">{index + 1}. {lang === 'ru' ? item.originalTextRu : item.originalTextKey}</p>
+                                    <textarea
+                                        className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
+                                        rows="2"
+                                        placeholder={t.placeholderExplanation}
+                                        onChange={(e) => handleAnswerChangeFactOpinion('iTask1', item.itemKey, e.target.value)}
+                                        value={answers.iTask1?.[item.itemKey] || ''}
+                                        disabled={isAiLoading}
+                                    />
+                                </div>
+                            ))}
                         </div>
-                        <button className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">{t.submitBtn}</button>
+                        <button
+                            onClick={() => handleSubmitFactOpinion('iTask1')}
+                            disabled={isAiLoading}
+                            className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                            {t.submitBtn}
+                        </button>
+                        <div className="mt-4">
+                            {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('iTask1')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            )}
+                            {currentErrors['iTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask1']}</p>}
+                            {activeChatTaskKey === 'iTask1' && (
+                                <div className="mt-4">
+                                    <AiChatWindow
+                                        messages={chatMessages}
+                                        isLoading={isAiLoading}
+                                        onSendMessage={(message) => handleAskAiFactOpinion('iTask1', message)}
+                                    />
+                                    <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, iTask1: null})); }}
+                                        className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                        {t.closeAiChat || 'Close AI Chat'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
                         <h3 className="text-xl font-semibold mb-3">{t.factITask2Title}</h3>
                         <p className="mb-4 text-sm text-gray-600">{t.factITask2Desc}</p>
                         <div className="space-y-6">
-                            <div>
-                                <p className="font-medium">{lang === 'ru' ? 'Утверждение: Ташкент - самый развитый город в Узбекистане.' : 'Statement: Tashkent is the most developed city in Uzbekistan.'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="3" placeholder={t.placeholderArguments}></textarea>
-                            </div>
-                             <div>
-                                <p className="font-medium">{lang === 'ru' ? 'Утверждение: Изучение английского языка необходимо для успеха в Узбекистане.' : 'Statement: Learning English is necessary for success in Uzbekistan.'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="3" placeholder={t.placeholderArguments}></textarea>
-                            </div>
+                            {[
+                                { itemKey: 'i2_tashkent_dev_args', originalTextKey: 'Statement: Tashkent is the most developed city in Uzbekistan.', originalTextRu: 'Утверждение: Ташкент - самый развитый город в Узбекистане.' },
+                                { itemKey: 'i2_english_success_args', originalTextKey: 'Statement: Learning English is necessary for success in Uzbekistan.', originalTextRu: 'Утверждение: Изучение английского языка необходимо для успеха в Узбекистане.' }
+                            ].map((item, index) => (
+                                <div key={item.itemKey}>
+                                    <p className="font-medium">{lang === 'ru' ? item.originalTextRu : item.originalTextKey}</p>
+                                    <textarea
+                                        className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
+                                        rows="3"
+                                        placeholder={t.placeholderArguments}
+                                        onChange={(e) => handleAnswerChangeFactOpinion('iTask2', item.itemKey, e.target.value)}
+                                        value={answers.iTask2?.[item.itemKey] || ''}
+                                        disabled={isAiLoading}
+                                    />
+                                </div>
+                            ))}
                         </div>
-                         <button className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">{t.submitBtn}</button>
+                        <button
+                            onClick={() => handleSubmitFactOpinion('iTask2')}
+                            disabled={isAiLoading}
+                            className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                            {t.submitBtn}
+                        </button>
+                        <div className="mt-4">
+                            {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('iTask2')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            )}
+                            {currentErrors['iTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask2']}</p>}
+                            {activeChatTaskKey === 'iTask2' && (
+                                <div className="mt-4">
+                                    <AiChatWindow
+                                        messages={chatMessages}
+                                        isLoading={isAiLoading}
+                                        onSendMessage={(message) => handleAskAiFactOpinion('iTask2', message)}
+                                    />
+                                    <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, iTask2: null})); }}
+                                        className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                        {t.closeAiChat || 'Close AI Chat'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
                 
@@ -644,32 +807,80 @@ export default function FactOpinionModule() {
                         <h3 className="text-xl font-semibold mb-3">{t.factATask2Title}</h3>
                         <p className="mb-4 text-sm text-gray-600">{t.factATask2Desc}</p>
                         <div className="space-y-6">
-                            <div>
-                                <p className="font-medium">1. {lang === 'ru' ? 'Узбекистан был частью Советского Союза до 1991 года.' : 'Uzbekistan was part of the Soviet Union before 1991.'}</p>
-                                <div className="mt-2">
-                                    <label className="mr-4 inline-flex items-center"><input type="radio" name="verify1" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.true}</label>
-                                    <label className="inline-flex items-center"><input type="radio" name="verify1" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.false}</label>
+                            {[
+                                { idPrefix: 'verify1', textKey: 'Uzbekistan was part of the Soviet Union before 1991.', textRu: 'Узбекистан был частью Советского Союза до 1991 года.' },
+                                { idPrefix: 'verify2', textKey: 'The official language of Uzbekistan is Russian.', textRu: 'Официальный язык Узбекистана - русский.' },
+                                { idPrefix: 'verify3', textKey: 'Uzbekistan has the largest desert in Central Asia.', textRu: 'В Узбекистане находится самая большая пустыня в Центральной Азии.' }
+                            ].map((item, index) => (
+                                <div key={item.idPrefix}>
+                                    <p className="font-medium">{index + 1}. {lang === 'ru' ? item.textRu : item.textKey}</p>
+                                    <div className="mt-2">
+                                        <label className="mr-4 inline-flex items-center">
+                                            <input
+                                                type="radio"
+                                                name={`aTask2-${item.idPrefix}_choice`}
+                                                value="true"
+                                                checked={answers.aTask2?.[`${item.idPrefix}_choice`] === 'true'}
+                                                onChange={(e) => handleAnswerChangeFactOpinion('aTask2', `${item.idPrefix}_choice`, e.target.value)}
+                                                disabled={isAiLoading}
+                                                className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"
+                                            />{t.true}
+                                        </label>
+                                        <label className="inline-flex items-center">
+                                            <input
+                                                type="radio"
+                                                name={`aTask2-${item.idPrefix}_choice`}
+                                                value="false"
+                                                checked={answers.aTask2?.[`${item.idPrefix}_choice`] === 'false'}
+                                                onChange={(e) => handleAnswerChangeFactOpinion('aTask2', `${item.idPrefix}_choice`, e.target.value)}
+                                                disabled={isAiLoading}
+                                                className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"
+                                            />{t.false}
+                                        </label>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500"
+                                        placeholder={t.placeholderFactCheck}
+                                        onChange={(e) => handleAnswerChangeFactOpinion('aTask2', `${item.idPrefix}_exp`, e.target.value)}
+                                        value={answers.aTask2?.[`${item.idPrefix}_exp`] || ''}
+                                        disabled={isAiLoading}
+                                    />
                                 </div>
-                                <input type="text" className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder={t.placeholderFactCheck} />
-                            </div>
-                            <div>
-                                <p className="font-medium">2. {lang === 'ru' ? 'Официальный язык Узбекистана - русский.' : 'The official language of Uzbekistan is Russian.'}</p>
-                                <div className="mt-2">
-                                    <label className="mr-4 inline-flex items-center"><input type="radio" name="verify2" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.true}</label>
-                                    <label className="inline-flex items-center"><input type="radio" name="verify2" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.false}</label>
-                                </div>
-                                <input type="text" className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder={t.placeholderFactCheck} />
-                            </div>
-                            <div>
-                                <p className="font-medium">3. {lang === 'ru' ? 'В Узбекистане находится самая большая пустыня в Центральной Азии.' : 'Uzbekistan has the largest desert in Central Asia.'}</p>
-                                <div className="mt-2">
-                                    <label className="mr-4 inline-flex items-center"><input type="radio" name="verify3" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.true}</label>
-                                    <label className="inline-flex items-center"><input type="radio" name="verify3" className="mr-2 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"/>{t.false}</label>
-                                </div>
-                                <input type="text" className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder={t.placeholderFactCheck} />
-                            </div>
+                            ))}
                         </div>
-                         <button className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">{t.submitBtn}</button>
+                        <button
+                            onClick={() => handleSubmitFactOpinion('aTask2')}
+                            disabled={isAiLoading}
+                            className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            {t.submitBtn}
+                        </button>
+                        <div className="mt-4">
+                            {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('aTask2')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            )}
+                            {currentErrors['aTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['aTask2']}</p>}
+                            {activeChatTaskKey === 'aTask2' && (
+                                <div className="mt-4">
+                                    <AiChatWindow
+                                        messages={chatMessages}
+                                        isLoading={isAiLoading}
+                                        onSendMessage={(message) => handleAskAiFactOpinion('aTask2', message)}
+                                    />
+                                    <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, aTask2: null})); }}
+                                        className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                        {t.closeAiChat || 'Close AI Chat'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
             </main>
