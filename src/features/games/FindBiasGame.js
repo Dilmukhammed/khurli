@@ -149,7 +149,7 @@ export default function FindBiasGame() {
 
         return {
             block_context: contextParts.join('\n'),
-            user_answers: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
+            user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
             interaction_type: 'discuss_game_find_bias'
         };
     }, [lang, userAnswers, results]);
@@ -169,14 +169,14 @@ export default function FindBiasGame() {
         }
 
         try {
-            const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_FindBias();
+            const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_FindBias();
 
             const response = await moduleService.getGenericAiInteraction({
                 module_id: 'game-find-bias',
                 task_id: 'main_game',
                 interaction_type,
                 block_context,
-                user_answers,
+                user_inputs,
                 user_query
             });
 

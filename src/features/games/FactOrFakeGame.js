@@ -148,7 +148,7 @@ export default function FactOrFakeGame() {
 
         return {
             block_context: contextParts.join('\n'),
-            user_answers: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
+            user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
             interaction_type: 'discuss_game_fact_or_fake'
         };
     }, [lang, userAnswers, results]);
@@ -168,14 +168,14 @@ export default function FactOrFakeGame() {
         }
 
         try {
-            const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_FactOrFake();
+            const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_FactOrFake();
 
             const response = await moduleService.getGenericAiInteraction({
                 module_id: 'game-fact-or-fake',
                 task_id: 'main_game',
                 interaction_type,
                 block_context,
-                user_answers,
+                user_inputs,
                 user_query
             });
 
