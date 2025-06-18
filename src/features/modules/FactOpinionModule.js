@@ -295,7 +295,7 @@ export default function FactOpinionModule() {
         let requestData = {
             module_id: "fact-opinion",
             task_id: taskKey,
-            interaction_type: 'general_query_fact_opinion', // Default
+            interaction_type: 'general_query', // Default
             block_context: `Context for ${taskKey}`,       // Placeholder
             user_inputs: [],
             correct_answers_data: [],

@@ -19,8 +19,14 @@ class UserModuleProgressSerializer(serializers.ModelSerializer):
 
 class GeminiExplanationRequestSerializer(serializers.Serializer):
     INTERACTION_TYPE_CHOICES = [
-        ('explain_mistakes', 'Explain Mistakes'),
-        ('discuss_open_ended', 'Discuss Open-ended'),
+        ('explain_mistakes', 'Explain Mistakes'), # Existing
+        ('discuss_open_ended', 'Discuss Open-ended'), # Existing
+        ('explain_fact_opinion_choice', 'Explain Fact/Opinion Choice'), # New for Fact-Opinion
+        ('feedback_on_rewrite', 'Feedback on Rewrite'),         # New for Fact-Opinion
+        ('feedback_on_justification', 'Feedback on Justification'), # New for Fact-Opinion
+        ('discuss_statement_nature', 'Discuss Statement Nature'), # New for Fact-Opinion
+        ('assist_fact_check', 'Assist Fact Check'),             # New for Fact-Opinion
+        ('general_query', 'General Query')                      # New generic fallback
     ]
 
     block_context = serializers.CharField(
