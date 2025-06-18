@@ -220,7 +220,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                         optionsData: options
                     })}
                     disabled={isMainAiLoading && activeAiTaskKey === taskKey}
-                    className="mt-3 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
+                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                 >
                     {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
                 </button>
@@ -600,7 +600,7 @@ export default function FactOpinionModule() {
                             <button
                                 onClick={() => handleAskAiFactOpinion('bTask2')}
                                 disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
-                                className="mt-3 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
+                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
                                 {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
                             </button>
@@ -685,21 +685,20 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-3">
-                            {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
-                                <button
-                                    onClick={() => handleAskAiFactOpinion('iTask1')}
-                                    disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
-                                >
-                                    {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
-                                </button>
-                            )}
-                            {currentErrors['iTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask1']}</p>}
-                            {activeChatTaskKey === 'iTask1' && (
-                                <div className="mt-4">
-                                    <AiChatWindow
-                                        messages={chatMessages}
+                        {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
+                            <button
+                                onClick={() => handleAskAiFactOpinion('iTask1')}
+                                disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
+                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                            </button>
+                        )}
+                        {currentErrors['iTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask1']}</p>}
+                        {activeChatTaskKey === 'iTask1' && (
+                            <div className="mt-4">
+                                <AiChatWindow
+                                    messages={chatMessages}
                                         isLoading={isAiLoading}
                                         onSendMessage={(message) => handleAskAiFactOpinion('iTask1', message)}
                                     />
@@ -709,7 +708,6 @@ export default function FactOpinionModule() {
                                     </button>
                                 </div>
                             )}
-                        </div>
                     </div>
 
                     <div className="p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -740,21 +738,20 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-3">
-                            {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
-                                <button
-                                    onClick={() => handleAskAiFactOpinion('iTask2')}
-                                    disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
-                                >
-                                    {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
-                                </button>
-                            )}
-                            {currentErrors['iTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask2']}</p>}
-                            {activeChatTaskKey === 'iTask2' && (
-                                <div className="mt-4">
-                                    <AiChatWindow
-                                        messages={chatMessages}
+                        {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
+                            <button
+                                onClick={() => handleAskAiFactOpinion('iTask2')}
+                                disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
+                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                            </button>
+                        )}
+                        {currentErrors['iTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask2']}</p>}
+                        {activeChatTaskKey === 'iTask2' && (
+                            <div className="mt-4">
+                                <AiChatWindow
+                                    messages={chatMessages}
                                         isLoading={isAiLoading}
                                         onSendMessage={(message) => handleAskAiFactOpinion('iTask2', message)}
                                     />
@@ -764,7 +761,6 @@ export default function FactOpinionModule() {
                                     </button>
                                 </div>
                             )}
-                        </div>
                     </div>
                 </section>
                 
@@ -856,21 +852,20 @@ export default function FactOpinionModule() {
                         >
                             {t.submitBtn}
                         </button>
-                        <div className="mt-3">
-                            {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
-                                <button
-                                    onClick={() => handleAskAiFactOpinion('aTask2')}
-                                    disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 w-full sm:w-auto"
-                                >
-                                    {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
-                                </button>
-                            )}
-                            {currentErrors['aTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['aTask2']}</p>}
-                            {activeChatTaskKey === 'aTask2' && (
-                                <div className="mt-4">
-                                    <AiChatWindow
-                                        messages={chatMessages}
+                        {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
+                            <button
+                                onClick={() => handleAskAiFactOpinion('aTask2')}
+                                disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
+                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                            </button>
+                        )}
+                        {currentErrors['aTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['aTask2']}</p>}
+                        {activeChatTaskKey === 'aTask2' && (
+                            <div className="mt-4">
+                                <AiChatWindow
+                                    messages={chatMessages}
                                         isLoading={isAiLoading}
                                         onSendMessage={(message) => handleAskAiFactOpinion('aTask2', message)}
                                     />
@@ -880,7 +875,6 @@ export default function FactOpinionModule() {
                                     </button>
                                 </div>
                             )}
-                        </div>
                     </div>
                 </section>
             </main>
