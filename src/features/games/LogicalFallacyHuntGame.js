@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Add useCallback
+import moduleService from '../../services/moduleService'; // ASSUMED IMPORT
+import AiChatWindow from '../../components/common/AiChatWindow'; // ASSUMED IMPORT
 
 // Translations and game data for the Logical Fallacy Hunt game
 const gameData = {
@@ -36,7 +38,10 @@ const gameData = {
         argument5_text: "Либо вы полностью поддерживаете новую реформу образования, либо вы против будущего нашей страны.",
         argument5_explanation: "Предлагается только два крайних варианта, игнорируя возможные промежуточные позиции или альтернативы.",
         argument6_text: "Подумайте о несчастных бездомных животных! Мы просто обязаны немедленно построить еще 10 приютов, иначе вы бессердечны!",
-        argument6_explanation: "Аргумент давит на жалость, а не предлагает логическое обоснование необходимости именно 10 приютов немедленно."
+        argument6_explanation: "Аргумент давит на жалость, а не предлагает логическое обоснование необходимости именно 10 приютов немедленно.",
+        askAiButton: "Спросить ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChatButton: "Закрыть чат",
     },
     en: {
         pageTitle: "Game: Logical Fallacy Hunt",
@@ -72,7 +77,10 @@ const gameData = {
         argument5_text: "Either you fully support the new education reform, or you are against the future of our country.",
         argument5_explanation: "Only two extreme options are presented, ignoring possible middle grounds or alternatives.",
         argument6_text: "Think of the poor homeless animals! We absolutely must build 10 more shelters immediately, or you are heartless!",
-        argument6_explanation: "The argument appeals to pity rather than providing logical reasoning for needing exactly 10 shelters immediately."
+        argument6_explanation: "The argument appeals to pity rather than providing logical reasoning for needing exactly 10 shelters immediately.",
+        askAiButton: "Ask AI",
+        aiThinking: "AI Thinking...",
+        closeAiChatButton: "Close AI Chat",
     }
 };
 
@@ -94,6 +102,11 @@ export default function LogicalFallacyHuntGame() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
     const [userAnswers, setUserAnswers] = useState({});
     const [results, setResults] = useState({ feedback: '', score: null, details: {} });
+    const [showMainAiButton, setShowMainAiButton] = useState(false);
+    const [activeChat, setActiveChat] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentError, setCurrentError] = useState('');
 
     useEffect(() => {
         const t = gameData[lang];
@@ -113,7 +126,7 @@ export default function LogicalFallacyHuntGame() {
         setUserAnswers(prev => ({ ...prev, [argumentId]: fallacyKey }));
     };
 
-    const checkAnswers = () => {
+    const handleCheckAnswersAndEnableAI = () => {
         let correctCount = 0;
         const newResultDetails = {};
         gameArguments.forEach(arg => {
@@ -135,7 +148,90 @@ export default function LogicalFallacyHuntGame() {
                 details: newResultDetails
             });
         }
+        setShowMainAiButton(true);
+        setActiveChat(false);
+        setChatMessages([]);
+        setCurrentError('');
     };
+
+    const getTaskDetailsForAI_LogicalFallacy = useCallback(() => {
+        const t = gameData[lang];
+        const contextParts = [
+            `Game: ${t.gameTitle}`,
+            `Instructions: ${t.gameInstructions}`,
+            "Arguments and Fallacies presented:"
+        ];
+        allFallacies.forEach(fallacyKey => {
+            contextParts.push(`- ${t[fallacyKey]}: ${t[fallacyKey + '_desc']}`);
+        });
+        contextParts.push("\nUser's attempt:");
+
+        const userAnswersFormatted = gameArguments.map((arg, index) => {
+            const userAnswerKey = userAnswers[arg.id] || 'Not answered';
+            const userAnswerText = userAnswerKey === 'Not answered' ? 'Not answered' : t[userAnswerKey];
+            const correctAnswerText = t[arg.correctAnswer];
+            const isCorrect = userAnswerKey === arg.correctAnswer ? 'Correct' : 'Incorrect';
+            return `Argument ${index + 1} ("${t[arg.text_key].substring(0, 50)}..."):
+You answered: '${userAnswerText}'
+Correct fallacy: '${correctAnswerText}'
+Your assessment: ${isCorrect}
+Explanation: ${t[arg.explanation_key]}`;
+        }).join('\n\n');
+
+        let resultsSummary = "User has not checked answers yet.";
+        if (results && results.feedback) {
+            resultsSummary = `User's results: ${results.feedback}`;
+        }
+
+        return {
+            block_context: contextParts.join('\n'),
+            user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`], // Key changed to user_inputs
+            interaction_type: 'discuss_game_logical_fallacy'
+        };
+    }, [lang, userAnswers, results]);
+
+    const handleAskAI_LogicalFallacy = useCallback(async (userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChat(true);
+        setCurrentError('');
+        const t = gameData[lang];
+        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else {
+            setChatMessages([{ sender: 'ai', text: "You can ask about specific fallacies, why your answer was correct/incorrect for an argument, or for more examples." }, thinkingMsg]);
+        }
+
+        try {
+            const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_LogicalFallacy();
+
+            const response = await moduleService.getGenericAiInteraction({
+                module_id: 'game-logical-fallacy',
+                task_id: 'main_game',
+                interaction_type,
+                block_context,
+                user_inputs: user_inputs, // Ensure this key is user_inputs
+                user_query
+            });
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error) {
+            console.error('Error fetching AI for LogicalFallacyHuntGame:', error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentError(errorMsg);
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_LogicalFallacy, lang]);
     
     const t = gameData[lang];
 
@@ -186,14 +282,50 @@ export default function LogicalFallacyHuntGame() {
                         )
                     })}
                 </div>
-
-                <button onClick={checkAnswers} className="mt-8 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50">
-                    {t.checkAnswersButton}
-                </button>
+                <div> {/* ADDED WRAPPER */}
+                    <button
+                        onClick={handleCheckAnswersAndEnableAI} // MODIFIED
+                        className="mt-8 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                    >
+                        {t.checkAnswersButton}
+                    </button>
+                </div>
 
                 {results.feedback && (
                     <div className={`mt-6 text-center text-lg font-semibold ${results.score === gameArguments.length ? 'text-emerald-600' : 'text-red-600'}`}>
                         {results.feedback}
+                    </div>
+                )}
+
+                {showMainAiButton && !currentError && (
+                    <div> {/* Wrapper for Ask AI button */}
+                        <button
+                            onClick={() => handleAskAI_LogicalFallacy()}
+                            disabled={isAiLoading}
+                            className="mt-4 w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50"
+                        >
+                            {t.askAiButton}
+                        </button>
+                    </div>
+                )}
+
+                {currentError && <p className="mt-4 text-center text-red-600">{currentError}</p>}
+
+                {activeChat && (
+                    <div className="mt-6 p-4 border-t border-gray-200">
+                        <AiChatWindow
+                            messages={chatMessages}
+                            isLoading={isAiLoading}
+                            onSendMessage={(message) => handleAskAI_LogicalFallacy(message)}
+                        />
+                        <button
+                            onClick={() => {
+                                setActiveChat(false);
+                            }}
+                            className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            {t.closeAiChatButton}
+                        </button>
                     </div>
                 )}
             </div>

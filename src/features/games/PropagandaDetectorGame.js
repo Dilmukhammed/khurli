@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Add useCallback
+import moduleService from '../../services/moduleService'; // ASSUMED IMPORT
+import AiChatWindow from '../../components/common/AiChatWindow'; // ASSUMED IMPORT
 
 // Translations and game data for the Propaganda Detector game
 const gameData = {
@@ -36,7 +38,10 @@ const gameData = {
         statement5_text: "Политика оппонента ассоциируется с предательством национальных интересов.",
         statement5_explanation: "Негативные ассоциации (предательство) переносятся на политику оппонента.",
         statement6_text: "Я такой же простой рабочий, как и вы, и я понимаю ваши проблемы.",
-        statement6_explanation: "Политик пытается показать себя 'своим', чтобы вызвать доверие."
+        statement6_explanation: "Политик пытается показать себя 'своим', чтобы вызвать доверие.",
+        askAiButton: "Спросить ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChatButton: "Закрыть чат",
     },
     en: {
         pageTitle: "Game: Propaganda Detector",
@@ -72,7 +77,10 @@ const gameData = {
         statement5_text: "The opponent's policy is associated with betraying national interests.",
         statement5_explanation: "Negative associations (betrayal) are transferred onto the opponent's policy.",
         statement6_text: "I'm just a simple worker like you, and I understand your problems.",
-        statement6_explanation: "The politician tries to appear as 'one of the people' to gain trust."
+        statement6_explanation: "The politician tries to appear as 'one of the people' to gain trust.",
+        askAiButton: "Ask AI",
+        aiThinking: "AI Thinking...",
+        closeAiChatButton: "Close AI Chat",
     }
 };
 
@@ -94,6 +102,11 @@ export default function PropagandaDetectorGame() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
     const [userAnswers, setUserAnswers] = useState({});
     const [results, setResults] = useState({ feedback: '', score: null, details: {} });
+    const [showMainAiButton, setShowMainAiButton] = useState(false);
+    const [activeChat, setActiveChat] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentError, setCurrentError] = useState('');
 
     useEffect(() => {
         const t = gameData[lang];
@@ -113,7 +126,7 @@ export default function PropagandaDetectorGame() {
         setUserAnswers(prev => ({ ...prev, [statementId]: techniqueKey }));
     };
 
-    const checkAnswers = () => {
+    const handleCheckAnswersAndEnableAI = () => {
         let correctCount = 0;
         const newResultDetails = {};
         gameStatements.forEach(stmt => {
@@ -135,7 +148,90 @@ export default function PropagandaDetectorGame() {
                 details: newResultDetails
             });
         }
+        setShowMainAiButton(true);
+        setActiveChat(false);
+        setChatMessages([]);
+        setCurrentError('');
     };
+
+    const getTaskDetailsForAI_Propaganda = useCallback(() => {
+        const t = gameData[lang];
+        const contextParts = [
+            `Game: ${t.gameTitle}`,
+            `Instructions: ${t.gameInstructions}`,
+            "Propaganda techniques and their descriptions presented:"
+        ];
+        allTechniques.forEach(techKey => {
+            contextParts.push(`- ${t[techKey]}: ${t[techKey + '_desc']}`);
+        });
+        contextParts.push("\nUser's attempt:");
+
+        const userAnswersFormatted = gameStatements.map((stmt, index) => {
+            const userAnswerKey = userAnswers[stmt.id] || 'Not answered';
+            const userAnswerText = userAnswerKey === 'Not answered' ? 'Not answered' : t[userAnswerKey];
+            const correctAnswerText = t[stmt.correctAnswer];
+            const isCorrect = userAnswerKey === stmt.correctAnswer ? 'Correct' : 'Incorrect';
+            return `Statement ${index + 1} ("${t[stmt.text_key].substring(0, 50)}..."):
+You identified: '${userAnswerText}'
+Correct technique: '${correctAnswerText}'
+Your assessment: ${isCorrect}
+Explanation: ${t[stmt.explanation_key]}`;
+        }).join('\n\n');
+
+        let resultsSummary = "User has not checked answers yet.";
+        if (results && results.feedback) {
+            resultsSummary = `User's results: ${results.feedback}`;
+        }
+
+        return {
+            block_context: contextParts.join('\n'),
+            user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
+            interaction_type: 'discuss_game_propaganda_detector'
+        };
+    }, [lang, userAnswers, results]);
+
+    const handleAskAI_Propaganda = useCallback(async (userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChat(true);
+        setCurrentError('');
+        const t = gameData[lang];
+        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else {
+            setChatMessages([{ sender: 'ai', text: "You can ask about specific propaganda techniques, why your answer was correct/incorrect for a statement, or for more examples." }, thinkingMsg]);
+        }
+
+        try {
+            const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_Propaganda();
+
+            const response = await moduleService.getGenericAiInteraction({
+                module_id: 'game-propaganda-detector',
+                task_id: 'main_game',
+                interaction_type,
+                block_context,
+                user_inputs: user_inputs,
+                user_query
+            });
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error) {
+            console.error('Error fetching AI for PropagandaDetectorGame:', error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentError(errorMsg);
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_Propaganda, lang]);
 
     const t = gameData[lang];
 
@@ -186,14 +282,50 @@ export default function PropagandaDetectorGame() {
                         )
                     })}
                 </div>
-
-                <button onClick={checkAnswers} className="mt-8 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50">
-                    {t.checkAnswersButton}
-                </button>
+                <div> {/* ADDED WRAPPER */}
+                    <button
+                        onClick={handleCheckAnswersAndEnableAI} // MODIFIED
+                        className="mt-8 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50"
+                    >
+                        {t.checkAnswersButton}
+                    </button>
+                </div>
 
                 {results.feedback && (
                     <div className={`mt-6 text-center text-lg font-semibold ${results.score === gameStatements.length ? 'text-emerald-600' : 'text-red-600'}`}>
                         {results.feedback}
+                    </div>
+                )}
+
+                {showMainAiButton && !currentError && (
+                    <div> {/* Wrapper for Ask AI button */}
+                        <button
+                            onClick={() => handleAskAI_Propaganda()}
+                            disabled={isAiLoading}
+                            className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                        >
+                            {t.askAiButton}
+                        </button>
+                    </div>
+                )}
+
+                {currentError && <p className="mt-4 text-center text-red-600">{currentError}</p>}
+
+                {activeChat && (
+                    <div className="mt-6 p-4 border-t border-gray-200">
+                        <AiChatWindow
+                            messages={chatMessages}
+                            isLoading={isAiLoading}
+                            onSendMessage={(message) => handleAskAI_Propaganda(message)}
+                        />
+                        <button
+                            onClick={() => {
+                                setActiveChat(false);
+                            }}
+                            className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            {t.closeAiChatButton}
+                        </button>
                     </div>
                 )}
             </div>
