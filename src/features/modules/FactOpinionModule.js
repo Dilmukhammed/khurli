@@ -214,6 +214,11 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                     {checkBtnText}
                 </button>
             </div>
+            {feedback && (
+                <div className={`result-message mt-3 text-sm font-medium ${getFeedbackClass()}`}>
+                    {feedback}
+                </div>
+            )}
             {showAskAiButton && (
                 <div>
                     <button
@@ -227,11 +232,6 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                     >
                         {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
                     </button>
-                </div>
-            )}
-            {feedback && (
-                <div className={`result-message mt-3 text-sm font-medium ${getFeedbackClass()}`}>
-                    {feedback}
                 </div>
             )}
         </div>
