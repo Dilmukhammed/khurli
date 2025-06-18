@@ -231,10 +231,13 @@ export default {
     getModuleProgress,
     markTaskAsCompleted,
     getAiProverbExplanation,
-    getAiDebateDiscussion, // Added new function here
+    // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
+    getAiDebateDiscussion, // Ensure this is moved before export and included
+    getGenericAiInteraction, // To be added
 };
 
 // Function to get AI feedback for debate discussions
+// Moved before export default
 async function getAiDebateDiscussion(block_context, user_answers, user_query = '') {
     let token = authService.getAuthToken();
     if (!token) {
@@ -266,6 +269,80 @@ async function getAiDebateDiscussion(block_context, user_answers, user_query = '
         // Similar to getAiProverbExplanation, detailed refresh logic could be added
         // but for now, relying on handleResponse and higher-level error handling.
         console.error('Error in getAiDebateDiscussion:', error);
+        throw error;
+    }
+}
+
+// Function to get AI feedback for fact/opinion module
+// Commented out as per plan, to be replaced by getGenericAiInteraction for this module.
+// async function getAiFactOpinion(block_context, user_answers, correct_answers = [], user_query = '', interaction_type) {
+//     let token = authService.getAuthToken();
+//     if (!token) {
+//         throw new Error('User not authenticated. Cannot fetch AI fact/opinion feedback.');
+//     }
+//
+//     const requestUrl = `${API_BASE_URL}/ai-fact-opinion/`;
+//     const requestBody = {
+//         block_context: block_context,
+//         user_answers: user_answers,
+//         correct_answers: correct_answers,
+//         user_query: user_query,
+//         interaction_type: interaction_type,
+//     };
+//
+//     const requestOptions = {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'Authorization': `Bearer ${token}`,
+//         },
+//         body: JSON.stringify(requestBody),
+//     };
+//
+//     try {
+//         const response = await fetch(requestUrl, requestOptions);
+//         return await handleResponse(response);
+//     } catch (error) {
+//         console.error('Error in getAiFactOpinion:', error);
+//         throw error;
+//     }
+// }
+
+// Generic function to interact with the new AI endpoint
+async function getGenericAiInteraction(requestData) {
+    let token = authService.getAuthToken();
+    if (!token) {
+        throw new Error('User not authenticated. Cannot fetch generic AI interaction.');
+    }
+
+    const requestUrl = `${API_BASE_URL}/ai/generic-interaction/`;
+
+    // Map frontend naming (user_inputs, correct_answers_data) to backend (user_answers, correct_answers)
+    const body = {
+        module_id: requestData.module_id,
+        task_id: requestData.task_id, // Optional, include if provided
+        interaction_type: requestData.interaction_type,
+        block_context: requestData.block_context,
+        user_answers: requestData.user_inputs || [], // Map to backend's expected key
+        correct_answers: requestData.correct_answers_data || [], // Map to backend's expected key
+        user_query: requestData.user_query || ''
+    };
+
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Error in getGenericAiInteraction:', error);
+        // Consider adding token refresh logic here if needed, similar to other service calls
         throw error;
     }
 }

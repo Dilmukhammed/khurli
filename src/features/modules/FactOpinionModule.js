@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService';
+import AiChatWindow from '../../components/common/AiChatWindow';
 
 // Translations object containing all the text for both languages.
 // In a real application, this would likely be moved to a dedicated i18n library.
@@ -13,6 +15,11 @@ const translations = {
         opinion: "Мнение",
         checkAnswersBtn: "Проверить ответы",
         submitBtn: "Отправить",
+        askAiBtn: "Спросить ИИ", // Added
+        closeAiChat: "Закрыть чат ИИ", // Added
+        aiThinking: "ИИ думает...", // Added
+        askAiInstruction: "Что бы вы хотели спросить по этому заданию?", // Added
+        aiError: "Не удалось получить ответ от ИИ.", // Added
         allCorrectMessage: "Все ответы верны!",
         someIncorrectMessage: "Некоторые ответы неверны. Проверьте выделенные.",
         factBTask2Title: "2. Преобразование мнений в факты и наоборот",
@@ -51,6 +58,11 @@ const translations = {
         opinion: "Opinion",
         checkAnswersBtn: "Check Answers",
         submitBtn: "Submit",
+        askAiBtn: "Ask AI", // Added
+        closeAiChat: "Close AI Chat", // Added
+        aiThinking: "AI Thinking...", // Added
+        askAiInstruction: "What would you like to ask about this task?", // Added
+        aiError: "Failed to get AI response.", // Added
         allCorrectMessage: "All answers are correct!",
         someIncorrectMessage: "Some answers are incorrect. Check the highlighted ones.",
         factBTask2Title: "2. Changing Opinions into Facts & Vice Versa",
@@ -110,16 +122,19 @@ const advancedTask1Data = [
 
 
 // Reusable component for multiple choice questions (Radio buttons)
-const MultipleChoiceTask = ({ taskId, questions, lang, title, description, options, checkBtnText, allCorrectMsg, someIncorrectMsg }) => {
+const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, options, checkBtnText, allCorrectMsg, someIncorrectMsg, onAnswersChecked, onAskAi, showAskAiButton, isMainAiLoading, activeAiTaskKey }) => {
     const [answers, setAnswers] = useState({});
     const [results, setResults] = useState({});
     const [feedback, setFeedback] = useState('');
 
     const handleAnswerChange = (questionId, answer) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
+        // Potentially clear feedback when answer changes, if desired
+        // setFeedback('');
+        // setResults(prev => ({ ...prev, [questionId]: undefined }));
     };
 
-    const checkAnswers = () => {
+    const handleCheckAnswersInternal = () => {
         const newResults = {};
         let allCorrect = true;
         let anyAnswered = false;
@@ -146,6 +161,10 @@ const MultipleChoiceTask = ({ taskId, questions, lang, title, description, optio
             setFeedback(allCorrectMsg);
         } else {
             setFeedback(someIncorrectMsg);
+        }
+        // Notify parent about the checked answers
+        if (onAnswersChecked) {
+            onAnswersChecked(taskKey, { questionsData: questions, userAnswers: answers, validationResults: results, optionsData: options });
         }
     };
 
@@ -188,11 +207,24 @@ const MultipleChoiceTask = ({ taskId, questions, lang, title, description, optio
                 ))}
             </div>
             <button
-                onClick={checkAnswers}
+                onClick={handleCheckAnswersInternal}
                 className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
                 {checkBtnText}
             </button>
+            {showAskAiButton && (
+                <button
+                    onClick={() => onAskAi(taskKey, 'explain_fact_opinion_choice', {
+                        questionsData: questions,
+                        userAnswers: answers,
+                        optionsData: options
+                    })}
+                    disabled={isMainAiLoading && activeAiTaskKey === taskKey}
+                    className="mt-3 ml-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                >
+                    {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
+                </button>
+            )}
             {feedback && (
                 <div className={`result-message mt-3 text-sm font-medium ${getFeedbackClass()}`}>
                     {feedback}
@@ -232,6 +264,179 @@ export default function FactOpinionModule() {
     // Get the correct set of translations based on the current language.
     const t = translations[lang];
 
+    const [answers, setAnswers] = useState({});
+    const [showAiButtons, setShowAiButtons] = useState({});
+    const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentErrors, setCurrentErrors] = useState({});
+    const [currentTaskAiContext, setCurrentTaskAiContext] = useState(null); // Added state
+
+    const handleAnswerChangeFactOpinion = useCallback((taskKey, itemKey, value) => {
+        setAnswers(prev => ({ ...prev, [taskKey]: { ...prev[taskKey], [itemKey]: value } }));
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+        setCurrentTaskAiContext(null); // Reset AI context when answer changes
+    }, []);
+
+    const handleSubmitFactOpinion = useCallback((taskKey, dataFromChild) => {
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+        // Store data from child if needed, or use it to pre-populate currentTaskAiContext for AI
+        // For MultipleChoiceTask, dataFromChild contains { questionsData, userAnswers, validationResults, optionsData }
+        // This could be useful if we want getTaskDetailsForAI_FactOpinion to read from main 'answers' state
+        // instead of relying only on 'additionalData' from handleAskAiFactOpinion.
+        // For now, handleAskAiFactOpinion passes 'additionalData' directly.
+        // console.log(`Data from child for ${taskKey}:`, dataFromChild);
+    }, []);
+
+    const getTaskDetailsForAI_FactOpinion = useCallback((taskKey, additionalData = {}) => {
+        // Initialize requestData structure for getGenericAiInteraction
+        let requestData = {
+            module_id: "fact-opinion",
+            task_id: taskKey,
+            interaction_type: 'general_query_fact_opinion', // Default
+            block_context: `Context for ${taskKey}`,       // Placeholder
+            user_inputs: [],
+            correct_answers_data: [],
+            user_query: '' // Will be filled by handleAskAiFactOpinion if it's a direct query
+        };
+
+        const taskSpecificMainAnswers = answers[taskKey] || {};
+
+        if (taskKey === 'bTask1' || taskKey === 'bTask3' || taskKey === 'aTask1') {
+            if (additionalData && additionalData.questionsData) {
+                const { questionsData, userAnswers: childAnswers, optionsData } = additionalData;
+
+                let taskTitle = '';
+                let taskDesc = '';
+                if (taskKey === 'bTask1') {
+                    taskTitle = t.factBTask1Title;
+                    taskDesc = t.factBTask1Desc;
+                } else if (taskKey === 'bTask3') {
+                    taskTitle = t.factBTask3Title;
+                    taskDesc = t.factBTask3Desc;
+                } else { // aTask1
+                    taskTitle = t.factATask1Title;
+                    taskDesc = t.factATask1Desc;
+                }
+
+                let current_block_context_parts = [`Task: ${taskTitle}`, `Description: ${taskDesc.replace(/<[^>]*>?/gm, '')}`, "---"];
+                let current_user_inputs = [];
+                let current_correct_answers_data = [];
+
+                questionsData.forEach(q_data => {
+                    const questionText = q_data[lang]; // Get text in current language
+                    const userAnswerValue = childAnswers[q_data.id];
+                    const correctAnswerValue = q_data.answer;
+
+                    const optionsString = Object.values(optionsData).map(optKey => t[optKey] || optKey).join(', '); // Use t[optKey] or optKey if not in translations
+                    current_block_context_parts.push(`Question: ${questionText}\nOptions: ${optionsString}`);
+
+                    const userAnswerDisplay = userAnswerValue ? (t[optionsData[userAnswerValue]] || optionsData[userAnswerValue]) : 'Not answered';
+                    const correctAnswerDisplay = t[optionsData[correctAnswerValue]] || optionsData[correctAnswerValue];
+
+                    current_user_inputs.push(`For question about "${questionText.substring(0, 35)}...": Your answer was '${userAnswerDisplay}'.`);
+                    current_correct_answers_data.push(`For question about "${questionText.substring(0, 35)}...": The correct answer is '${correctAnswerDisplay}'.`);
+                });
+
+                requestData.block_context = current_block_context_parts.join('\n');
+                requestData.user_inputs = current_user_inputs;
+                requestData.correct_answers_data = current_correct_answers_data;
+                requestData.interaction_type = 'explain_fact_opinion_choice';
+            } else {
+                // Fallback if additionalData is missing for these task types
+                requestData.block_context = `Task: ${taskKey} - Awaiting full data from component. This usually means the 'Ask AI' button was clicked before 'Check Answers' or data is not being passed correctly.`;
+                requestData.user_inputs = ["No answer data received from the component."];
+                 // Try to get title/desc if taskKey known
+                if (taskKey === 'bTask1') requestData.block_context = `${t.factBTask1Title}\n${t.factBTask1Desc}\nError: Missing detailed answer data.`;
+                else if (taskKey === 'bTask3') requestData.block_context = `${t.factBTask3Title}\n${t.factBTask3Desc}\nError: Missing detailed answer data.`;
+                else if (taskKey === 'aTask1') requestData.block_context = `${t.factATask1Title}\n${t.factATask1Desc}\nError: Missing detailed answer data.`;
+            }
+        } else if (taskKey === "factBTask2") { // Example: Beginner Task 2 (Rewriting)
+            requestData.block_context = t.factBTask2Title + "\n" + t.factBTask2Desc;
+            const inputs = [];
+            // Example: if answers are { b2_q1_opinion: "...", b2_q2_fact: "..." }
+            Object.entries(taskSpecificMainAnswers).forEach(([key, value]) => {
+                if (value) inputs.push(`${key.replace('b2_', '')}: ${value}`);
+            });
+            requestData.user_inputs = inputs.length > 0 ? inputs : ["No input provided for this task yet."];
+            requestData.interaction_type = 'feedback_on_rewrite';
+        } else if (Object.keys(taskSpecificMainAnswers).length > 0) {
+             // Generic handler for other tasks that might have answers directly in the 'answers' state
+            const titleKey = `${taskKey}Title`;
+            const descKey = `${taskKey}Desc`;
+            requestData.block_context = t[titleKey] ? `${t[titleKey]}\n${t[descKey] || ''}` : `Context for ${taskKey}`;
+            requestData.user_inputs = Object.entries(taskSpecificMainAnswers).map(([key, value]) => `${key}: ${String(value)}`);
+            // Determine interaction_type based on taskKey for other tasks if needed
+            if (taskKey === 'factITask1') requestData.interaction_type = 'feedback_on_justification';
+            else if (taskKey === 'factITask2') requestData.interaction_type = 'discuss_statement_nature';
+            else if (taskKey === 'factATask2') requestData.interaction_type = 'assist_fact_check';
+
+        }
+        // else, it uses the default "No specific input provided..." from requestData initialization
+
+        return requestData;
+    }, [answers, t, lang]); // lang is needed for q_data[lang]
+
+    const handleAskAiFactOpinion = useCallback(async (taskKey, userQuery = '', initialDataPayload = null) => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChatTaskKey(taskKey);
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+
+        const thinkingText = t.aiThinking || 'AI Thinking...';
+        const askInstructionText = t.askAiInstruction || 'What would you like to ask about this task?';
+        const aiErrorText = t.aiError || 'Failed to get AI response.';
+
+        const thinkingMsg = { sender: 'ai', text: thinkingText };
+
+        let dataForAiProcessing = initialDataPayload;
+        if (userQuery && !initialDataPayload) {
+            // This is a follow-up query from the chat window, use existing context
+            dataForAiProcessing = currentTaskAiContext;
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else if (initialDataPayload) {
+            // This is an initial "Ask AI" click, set new context
+            setCurrentTaskAiContext(initialDataPayload);
+            setChatMessages([{ sender: 'ai', text: askInstructionText }, thinkingMsg]);
+        } else {
+            // Fallback if neither, though typically one should be present
+            setCurrentTaskAiContext(null);
+            setChatMessages([thinkingMsg]);
+        }
+
+        try {
+            // Construct the request for the generic service
+            const requestDetails = getTaskDetailsForAI_FactOpinion(taskKey, dataForAiProcessing || {}); // Pass empty object if dataForAiProcessing is null
+
+            // If it's a user query from chat, ensure it's part of the requestDetails
+            if (userQuery) {
+                requestDetails.user_query = userQuery;
+            }
+
+            // NEW CALL to the generic service
+            const response = await moduleService.getGenericAiInteraction(requestDetails);
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== thinkingText),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error)
+ {
+            console.error(`Error fetching AI Fact/Opinion for ${taskKey} via generic service:`, error);
+            const errorMsg = error.message || aiErrorText;
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== thinkingText),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentErrors(prev => ({ ...prev, [taskKey]: errorMsg }));
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_FactOpinion, t, currentTaskAiContext, setCurrentTaskAiContext]);
+
+
     return (
         <div className="bg-gray-100 text-gray-800 font-sans">
             <main className="container mx-auto px-6 py-12">
@@ -242,7 +447,7 @@ export default function FactOpinionModule() {
                     <h2 className="text-2xl font-semibold text-indigo-700 mb-6 border-b pb-3">{t.beginnerLevel}</h2>
 
                     <MultipleChoiceTask
-                        taskId="beginner-1"
+                        taskKey="bTask1" // Changed from taskId
                         title={t.factBTask1Title}
                         description={t.factBTask1Desc}
                         questions={beginnerTask1Data}
@@ -251,38 +456,85 @@ export default function FactOpinionModule() {
                         checkBtnText={t.checkAnswersBtn}
                         allCorrectMsg={t.allCorrectMessage}
                         someIncorrectMsg={t.someIncorrectMessage}
+                        onAnswersChecked={handleSubmitFactOpinion} // Added
+                        onAskAi={handleAskAiFactOpinion} // Added
+                        showAskAiButton={showAiButtons['bTask1']} // Added
+                        isMainAiLoading={isAiLoading} // Added
+                        activeAiTaskKey={activeChatTaskKey} // Added
                     />
+                    {currentErrors['bTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask1']}</p>}
+                    {activeChatTaskKey === 'bTask1' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAiFactOpinion('bTask1', message)}
+                            />
+                            <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, bTask1: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
 
                     <div className="mb-8 p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
                         <h3 className="text-xl font-semibold mb-3">{t.factBTask2Title}</h3>
                         <p className="mb-4 text-sm text-gray-600">{t.factBTask2Desc}</p>
                         <div className="space-y-6">
-                            <div>
-                                <p className="font-medium">1. {lang === 'ru' ? 'Факт: Узбекистан расположен в Центральной Азии.' : 'Fact: Uzbekistan is located in Central Asia.'}</p>
-                                <label className="block text-sm font-medium text-gray-700 mt-2">{t.rewriteAsOpinion}</label>
-                                <input type="text" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" placeholder={t.placeholderRewriteOpinion} />
-                            </div>
-                            <div>
-                                <p className="font-medium">2. {lang === 'ru' ? 'Факт: Навруз празднуется 21 марта.' : 'Fact: Navruz is celebrated on March 21st.'}</p>
-                                <label className="block text-sm font-medium text-gray-700 mt-2">{t.rewriteAsOpinion}</label>
-                                <input type="text" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" placeholder={t.placeholderRewriteOpinion} />
-                            </div>
-                            <div>
-                                <p className="font-medium">3. {lang === 'ru' ? 'Мнение: Узбекский хлеб лучше любого другого хлеба.' : 'Opinion: Uzbek bread is better than any other bread.'}</p>
-                                <label className="block text-sm font-medium text-gray-700 mt-2">{t.rewriteAsFact}</label>
-                                <input type="text" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" placeholder={t.placeholderRewriteFact} />
-                            </div>
-                             <div>
-                                <p className="font-medium">4. {lang === 'ru' ? 'Мнение: Лучшее узбекское блюдо - самса.' : 'Opinion: The best Uzbek dish is samsa.'}</p>
-                                <label className="block text-sm font-medium text-gray-700 mt-2">{t.rewriteAsFact}</label>
-                                <input type="text" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" placeholder={t.placeholderRewriteFact} />
-                            </div>
+                            {[
+                                { itemKey: 'b2_op_uz_central_asia', originalTextKey: 'Fact: Uzbekistan is located in Central Asia.', originalTextRu: 'Факт: Узбекистан расположен в Центральной Азии.', rewritePromptKey: 'rewriteAsOpinion', placeholderKey: 'placeholderRewriteOpinion' },
+                                { itemKey: 'b2_op_navruz_march_21', originalTextKey: 'Fact: Navruz is celebrated on March 21st.', originalTextRu: 'Факт: Навруз празднуется 21 марта.', rewritePromptKey: 'rewriteAsOpinion', placeholderKey: 'placeholderRewriteOpinion' },
+                                { itemKey: 'b2_fact_uz_bread_better', originalTextKey: 'Opinion: Uzbek bread is better than any other bread.', originalTextRu: 'Мнение: Узбекский хлеб лучше любого другого хлеба.', rewritePromptKey: 'rewriteAsFact', placeholderKey: 'placeholderRewriteFact' },
+                                { itemKey: 'b2_fact_samsa_best', originalTextKey: 'Opinion: The best Uzbek dish is samsa.', originalTextRu: 'Мнение: Лучшее узбекское блюдо - самса.', rewritePromptKey: 'rewriteAsFact', placeholderKey: 'placeholderRewriteFact' },
+                            ].map((item, index) => (
+                                <div key={item.itemKey}>
+                                    <p className="font-medium">{index + 1}. {lang === 'ru' ? item.originalTextRu : item.originalTextKey}</p>
+                                    <label className="block text-sm font-medium text-gray-700 mt-2">{t[item.rewritePromptKey]}</label>
+                                    <input
+                                        type="text"
+                                        className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder={t[item.placeholderKey]}
+                                        onChange={(e) => handleAnswerChangeFactOpinion('bTask2', item.itemKey, e.target.value)}
+                                        value={answers.bTask2?.[item.itemKey] || ''}
+                                        disabled={isAiLoading}
+                                    />
+                                </div>
+                            ))}
                         </div>
-                        <button className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">{t.submitBtn}</button>
+                        <button
+                            onClick={() => handleSubmitFactOpinion('bTask2')}
+                            disabled={isAiLoading}
+                            className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            {t.submitBtn}
+                        </button>
+                        {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
+                            <button
+                                onClick={() => handleAskAiFactOpinion('bTask2')}
+                                disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
+                                className="mt-3 ml-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            >
+                                {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                            </button>
+                        )}
+                        {currentErrors['bTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask2']}</p>}
+                        {activeChatTaskKey === 'bTask2' && (
+                            <div className="mt-4">
+                                <AiChatWindow
+                                    messages={chatMessages}
+                                    isLoading={isAiLoading}
+                                    onSendMessage={(message) => handleAskAiFactOpinion('bTask2', message)}
+                                />
+                                <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, bTask2: null})); }}
+                                    className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                    {t.closeAiChat || 'Close AI Chat'}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <MultipleChoiceTask
-                        taskId="beginner-3"
+                        taskKey="bTask3"
                         title={t.factBTask3Title}
                         description={t.factBTask3Desc}
                         questions={beginnerTask3Data}
@@ -291,7 +543,26 @@ export default function FactOpinionModule() {
                         checkBtnText={t.checkAnswersBtn}
                         allCorrectMsg={t.allCorrectMessage}
                         someIncorrectMsg={t.someIncorrectMessage}
+                        onAnswersChecked={handleSubmitFactOpinion} // Added
+                        onAskAi={handleAskAiFactOpinion} // Added
+                        showAskAiButton={showAiButtons['bTask3']} // Added
+                        isMainAiLoading={isAiLoading} // Added
+                        activeAiTaskKey={activeChatTaskKey} // Added
                     />
+                    {currentErrors['bTask3'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask3']}</p>}
+                    {activeChatTaskKey === 'bTask3' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAiFactOpinion('bTask3', message)}
+                            />
+                            <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, bTask3: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
                 </section>
 
                 {/* Intermediate Level Section */}
@@ -339,7 +610,7 @@ export default function FactOpinionModule() {
                     <h2 className="text-2xl font-semibold text-red-700 mb-6 border-b pb-3">{t.advancedLevel}</h2>
 
                     <MultipleChoiceTask
-                        taskId="advanced-1"
+                        taskKey="aTask1" // Changed from taskId
                         title={t.factATask1Title}
                         description={t.factATask1Desc}
                         questions={advancedTask1Data}
@@ -348,7 +619,26 @@ export default function FactOpinionModule() {
                         checkBtnText={t.checkAnswersBtn}
                         allCorrectMsg={t.allCorrectMessage}
                         someIncorrectMsg={t.someIncorrectMessage}
+                        onAnswersChecked={handleSubmitFactOpinion} // Added
+                        onAskAi={handleAskAiFactOpinion} // Added
+                        showAskAiButton={showAiButtons['aTask1']} // Added
+                        isMainAiLoading={isAiLoading} // Added
+                        activeAiTaskKey={activeChatTaskKey} // Added
                     />
+                    {currentErrors['aTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['aTask1']}</p>}
+                    {activeChatTaskKey === 'aTask1' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAiFactOpinion('aTask1', message)}
+                            />
+                            <button onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, aTask1: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800">
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
 
                     <div className="p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
                         <h3 className="text-xl font-semibold mb-3">{t.factATask2Title}</h3>
