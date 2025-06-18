@@ -27,8 +27,10 @@ class GeminiExplanationRequestSerializer(serializers.Serializer):
         ('discuss_statement_nature', 'Discuss Statement Nature'), # New for Fact-Opinion
         ('assist_fact_check', 'Assist Fact Check'),             # New for Fact-Opinion
         ('general_query', 'General Query'),                      # New generic fallback
-        ('discuss_game_find_bias', 'Discuss Find Bias Game'),      # New
-        ('discuss_game_fact_or_fake', 'Discuss Fact or Fake Game') # New
+        ('discuss_game_find_bias', 'Discuss Find Bias Game'),
+        ('discuss_game_fact_or_fake', 'Discuss Fact or Fake Game'),
+        ('discuss_game_logical_fallacy', 'Discuss Logical Fallacy Game'),      # New
+        ('discuss_game_propaganda_detector', 'Discuss Propaganda Detector Game') # New
     ]
 
     block_context = serializers.CharField(
