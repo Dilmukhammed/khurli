@@ -206,24 +206,28 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                     </div>
                 ))}
             </div>
-            <button
-                onClick={handleCheckAnswersInternal}
-                className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-                {checkBtnText}
-            </button>
-            {showAskAiButton && (
+            <div>
                 <button
-                    onClick={() => onAskAi(taskKey, 'explain_fact_opinion_choice', {
-                        questionsData: questions,
+                    onClick={handleCheckAnswersInternal}
+                    className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                    {checkBtnText}
+                </button>
+            </div>
+            {showAskAiButton && (
+                <div>
+                    <button
+                        onClick={() => onAskAi(taskKey, 'explain_fact_opinion_choice', {
+                            questionsData: questions,
                         userAnswers: answers,
                         optionsData: options
                     })}
-                    disabled={isMainAiLoading && activeAiTaskKey === taskKey}
-                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                >
-                    {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
-                </button>
+                        disabled={isMainAiLoading && activeAiTaskKey === taskKey}
+                        className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                    >
+                        {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
+                    </button>
+                </div>
             )}
             {feedback && (
                 <div className={`result-message mt-3 text-sm font-medium ${getFeedbackClass()}`}>
@@ -589,21 +593,25 @@ export default function FactOpinionModule() {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            onClick={() => handleSubmitFactOpinion('bTask2')}
-                            disabled={isAiLoading}
-                            className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            {t.submitBtn}
-                        </button>
-                        {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
+                        <div>
                             <button
-                                onClick={() => handleAskAiFactOpinion('bTask2')}
-                                disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
-                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                onClick={() => handleSubmitFactOpinion('bTask2')}
+                                disabled={isAiLoading}
+                                className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
-                                {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                {t.submitBtn}
                             </button>
+                        </div>
+                        {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
+                            <div>
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('bTask2')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
+                                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            </div>
                         )}
                         {currentErrors['bTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask2']}</p>}
                         {activeChatTaskKey === 'bTask2' && (
@@ -678,21 +686,25 @@ export default function FactOpinionModule() {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            onClick={() => handleSubmitFactOpinion('iTask1')}
-                            disabled={isAiLoading}
-                            className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
-                            {t.submitBtn}
-                        </button>
-                        {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
+                        <div>
                             <button
-                                onClick={() => handleAskAiFactOpinion('iTask1')}
-                                disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
-                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                onClick={() => handleSubmitFactOpinion('iTask1')}
+                                disabled={isAiLoading}
+                                className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                             >
-                                {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                {t.submitBtn}
                             </button>
+                        </div>
+                        {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
+                            <div>
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('iTask1')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
+                                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            </div>
                         )}
                         {currentErrors['iTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask1']}</p>}
                         {activeChatTaskKey === 'iTask1' && (
@@ -731,21 +743,25 @@ export default function FactOpinionModule() {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            onClick={() => handleSubmitFactOpinion('iTask2')}
-                            disabled={isAiLoading}
-                            className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
-                            {t.submitBtn}
-                        </button>
-                        {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
+                        <div>
                             <button
-                                onClick={() => handleAskAiFactOpinion('iTask2')}
-                                disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
-                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                onClick={() => handleSubmitFactOpinion('iTask2')}
+                                disabled={isAiLoading}
+                                className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                             >
-                                {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                {t.submitBtn}
                             </button>
+                        </div>
+                        {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
+                            <div>
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('iTask2')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
+                                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            </div>
                         )}
                         {currentErrors['iTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['iTask2']}</p>}
                         {activeChatTaskKey === 'iTask2' && (
@@ -845,21 +861,25 @@ export default function FactOpinionModule() {
                                 </div>
                             ))}
                         </div>
-                        <button
-                            onClick={() => handleSubmitFactOpinion('aTask2')}
-                            disabled={isAiLoading}
-                            className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                            {t.submitBtn}
-                        </button>
-                        {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
+                        <div>
                             <button
-                                onClick={() => handleAskAiFactOpinion('aTask2')}
-                                disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
-                                className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                onClick={() => handleSubmitFactOpinion('aTask2')}
+                                disabled={isAiLoading}
+                                className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                             >
-                                {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                {t.submitBtn}
                             </button>
+                        </div>
+                        {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
+                            <div>
+                                <button
+                                    onClick={() => handleAskAiFactOpinion('aTask2')}
+                                    disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
+                                    className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                >
+                                    {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                </button>
+                            </div>
                         )}
                         {currentErrors['aTask2'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['aTask2']}</p>}
                         {activeChatTaskKey === 'aTask2' && (
