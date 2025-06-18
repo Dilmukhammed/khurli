@@ -445,6 +445,62 @@ const CulturalProverbsModule = () => {
                 correct_answers: [],
                 interaction_type: interaction_type_to_send,
             };
+        } else if (taskKey === 'beginnerTask4') {
+            interaction_type_to_send = 'discuss_open_ended';
+            taskBlockContext = `${t('beginnerTask4Title')}\n${t('beginnerTask4Desc')}`;
+            const userSentences = [];
+            for (let i = 1; i <= 4; i++) { // Loop for s1 to s4
+                const answer = answers.beginnerTask4?.[`s${i}`];
+                if (answer) {
+                    userSentences.push(`Sentence ${i}: ${answer}`);
+                } else {
+                    userSentences.push(`Sentence ${i}: (Not answered)`);
+                }
+            }
+            // Handle s5_proverb and s5_reason separately
+            const s5Proverb = answers.beginnerTask4?.s5_proverb;
+            const s5Reason = answers.beginnerTask4?.s5_reason;
+            let sentence5 = "Sentence 5 (Proverb): (Not answered)";
+            if (s5Proverb) {
+                sentence5 = `Sentence 5 (Proverb): ${s5Proverb}`;
+            }
+            if (s5Reason) {
+                sentence5 += `, Reason: ${s5Reason}`;
+            } else if (s5Proverb) {
+                sentence5 += `, Reason: (Not answered)`;
+            }
+            userSentences.push(sentence5);
+
+            const formatted_user_answers_string = userSentences.join("\n");
+            return {
+                block_context: taskBlockContext,
+                user_answers: [formatted_user_answers_string],
+                correct_answers: [],
+                interaction_type: interaction_type_to_send,
+            };
+        } else if (taskKey === 'intermediateTask3') {
+            interaction_type_to_send = 'discuss_open_ended';
+            taskBlockContext = `${t('intermediateTask3Title')}\n${t('intermediateTask3Desc')}`;
+            // Adding existing proverbs to context for clarity
+            taskBlockContext += `\n\nProverbs for comparison:`;
+            taskBlockContext += `\n1. Uzbek: "Yaxshi do'st - qiyin kunda bilinadi." -> English: "A friend in need is a friend indeed" (Cultural difference: ${t('intermediateTask3Diff1')})`;
+            taskBlockContext += `\n2. Uzbek: "Oltin topgan emas, do'st topgan baxtli." -> English: "${t('intermediateTask3Eng2')}"`;
+            taskBlockContext += `\n3. Uzbek: "Ilm - oltindan qadrli." -> English: "${t('intermediateTask3Eng3')}"`;
+
+            const userResponses = [];
+            const q2Diff = answers.intermediateTask3?.q2_diff;
+            const q3Diff = answers.intermediateTask3?.q3_diff;
+
+            userResponses.push(`Cultural difference explanation for proverb 2: ${q2Diff || '(Not answered)'}`);
+            userResponses.push(`Cultural difference explanation for proverb 3: ${q3Diff || '(Not answered)'}`);
+
+            const formatted_user_answers_string = userResponses.join("\n\n");
+            return {
+                block_context: taskBlockContext,
+                user_answers: [formatted_user_answers_string],
+                correct_answers: [],
+                interaction_type: interaction_type_to_send,
+            };
         } else {
             // Fallback for tasks not explicitly configured for AI or default to explain_mistakes if not caught above
              // For tasks that reach here, they are likely 'explain_mistakes' by default or unconfigured.
@@ -809,17 +865,103 @@ const CulturalProverbsModule = () => {
 
                             {/* Task 4 (Open-ended, not saved as 'completed' in this iteration) */}
                              <div className="mb-6 p-4 border rounded-md task-card bg-white force-english">
-                                <h4 className="font-semibold mb-2">{t('beginnerTask4Title')}</h4>
+                                <h4 className="font-semibold mb-2">
+                                    {t('beginnerTask4Title')}
+                                    {isTaskCompleted('beginnerTask4') && !progressLoading && <span className='completed-text'>{t('completedText')}</span>}
+                                </h4>
                                 <p className="mb-3 text-sm text-gray-600">{t('beginnerTask4Desc')}</p>
                                 <ol className="list-decimal list-inside space-y-3">
-                                    <li><span>A true friend is someone who</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"/></li>
-                                    <li><span>If you want to succeed in life, you should</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"/></li>
-                                    <li><span>When I have a problem, I usually</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"/></li>
-                                    <li><span>In Uzbekistan, people believe that patience is important because</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"/></li>
-                                    <li><span>A proverb I like is</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-1/2"/>, <span>because</span> <input type="text" className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"/></li>
+                                    <li>
+                                        <span>A true friend is someone who</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"
+                                            value={answers.beginnerTask4?.s1 || ''}
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's1', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />
+                                    </li>
+                                    <li>
+                                        <span>If you want to succeed in life, you should</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"
+                                            value={answers.beginnerTask4?.s2 || ''}
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's2', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />
+                                    </li>
+                                    <li>
+                                        <span>When I have a problem, I usually</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"
+                                            value={answers.beginnerTask4?.s3 || ''}
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's3', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />
+                                    </li>
+                                    <li>
+                                        <span>In Uzbekistan, people believe that patience is important because</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"
+                                            value={answers.beginnerTask4?.s4 || ''}
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's4', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />
+                                    </li>
+                                    <li>
+                                        <span>A proverb I like is</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-1/2"
+                                            value={answers.beginnerTask4?.s5_proverb || ''} // Changed key to be more specific
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's5_proverb', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />,
+                                        <span> because</span>
+                                        <input
+                                            type="text"
+                                            className="border rounded px-2 py-1 ml-2 w-full md:w-3/4"
+                                            value={answers.beginnerTask4?.s5_reason || ''} // Changed key to be more specific
+                                            onChange={(e) => handleAnswerChange('beginnerTask4', 's5_reason', e.target.value)}
+                                            disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                        />
+                                    </li>
                                 </ol>
-                                <button onClick={() => handleSubmit('beginnerTask4')} className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                <button
+                                    onClick={() => handleSubmit('beginnerTask4')}
+                                    className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                    disabled={isTaskCompleted('beginnerTask4') || progressLoading}
+                                >
+                                    {t('submitBtn')}
+                                </button>
                                 {results.beginnerTask4 && <div className={`result-message ${results.beginnerTask4.type}`}>{results.beginnerTask4.message}</div>}
+                                {showAiButtons.beginnerTask4 && !isTaskCompleted('beginnerTask4') &&
+                                    <button
+                                        onClick={() => handleAskAI('beginnerTask4')}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'beginnerTask4'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'beginnerTask4' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'beginnerTask4' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('beginnerTask4', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             
                             {/* Task 5 (Role-playing, not saved) */}
@@ -964,18 +1106,75 @@ const CulturalProverbsModule = () => {
 
                             {/* Task 3 (Open-ended) */}
                             <div className="mb-6 p-4 border rounded-md task-card bg-white">
-                                <h4 className="font-semibold mb-2">{t('intermediateTask3Title')}</h4>
+                                <h4 className="font-semibold mb-2">
+                                    {t('intermediateTask3Title')}
+                                    {isTaskCompleted('intermediateTask3') && !progressLoading && <span className='completed-text'>{t('completedText')}</span>}
+                                </h4>
                                 <p className="mb-3 text-sm text-gray-600">{t('intermediateTask3Desc')}</p>
                                 <table className="w-full border-collapse mt-4 table-fixed">
                                     <thead><tr><th className="border p-3 text-left bg-gray-100 font-semibold w-1/3">{t('tableUzbekProverb')}</th><th className="border p-3 text-left bg-gray-100 font-semibold w-1/3">{t('tableEnglishEquivalent')}</th><th className="border p-3 text-left bg-gray-100 font-semibold w-1/3">{t('tableCulturalDifference')}</th></tr></thead>
                                     <tbody>
                                         <tr><td className="border p-3 align-top break-words">1. Yaxshi do'st - qiyin kunda bilinadi.</td><td className="border p-3 align-top break-words">A friend in need is a friend indeed</td><td className="border p-3 align-top break-words">{t('intermediateTask3Diff1')}</td></tr>
-                                        <tr><td className="border p-3 align-top break-words">2. Oltin topgan emas, do'st topgan baxtli.</td><td className="border p-3 align-top break-words">{t('intermediateTask3Eng2')}</td><td className="border p-3 align-top"><textarea className="border rounded px-2 py-1 w-full h-20" placeholder="..."></textarea></td></tr>
-                                        <tr><td className="border p-3 align-top break-words">3. Ilm - oltindan qadrli.</td><td className="border p-3 align-top break-words">{t('intermediateTask3Eng3')}</td><td className="border p-3 align-top"><textarea className="border rounded px-2 py-1 w-full h-20" placeholder="..."></textarea></td></tr>
+                                        <tr>
+                                            <td className="border p-3 align-top break-words">2. Oltin topgan emas, do'st topgan baxtli.</td>
+                                            <td className="border p-3 align-top break-words">{t('intermediateTask3Eng2')}</td>
+                                            <td className="border p-3 align-top">
+                                                <textarea
+                                                    className="border rounded px-2 py-1 w-full h-20"
+                                                    placeholder="..."
+                                                    value={answers.intermediateTask3?.q2_diff || ''}
+                                                    onChange={(e) => handleAnswerChange('intermediateTask3', 'q2_diff', e.target.value)}
+                                                    disabled={isTaskCompleted('intermediateTask3') || progressLoading}
+                                                ></textarea>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border p-3 align-top break-words">3. Ilm - oltindan qadrli.</td>
+                                            <td className="border p-3 align-top break-words">{t('intermediateTask3Eng3')}</td>
+                                            <td className="border p-3 align-top">
+                                                <textarea
+                                                    className="border rounded px-2 py-1 w-full h-20"
+                                                    placeholder="..."
+                                                    value={answers.intermediateTask3?.q3_diff || ''}
+                                                    onChange={(e) => handleAnswerChange('intermediateTask3', 'q3_diff', e.target.value)}
+                                                    disabled={isTaskCompleted('intermediateTask3') || progressLoading}
+                                                ></textarea>
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
-                                <button onClick={() => handleSubmit('intermediateTask3')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                <button
+                                    onClick={() => handleSubmit('intermediateTask3')}
+                                    className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                    disabled={isTaskCompleted('intermediateTask3') || progressLoading}
+                                >
+                                    {t('submitBtn')}
+                                </button>
                                 {results.intermediateTask3 && <div className={`result-message ${results.intermediateTask3.type}`}>{results.intermediateTask3.message}</div>}
+                                {showAiButtons.intermediateTask3 && !isTaskCompleted('intermediateTask3') &&
+                                    <button
+                                        onClick={() => handleAskAI('intermediateTask3')}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'intermediateTask3'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'intermediateTask3' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'intermediateTask3' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('intermediateTask3', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 4 (Open-ended) */}
