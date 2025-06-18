@@ -230,7 +230,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                         disabled={isMainAiLoading && activeAiTaskKey === taskKey}
                         className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                     >
-                        {isMainAiLoading && activeAiTaskKey === taskKey ? (translations[lang].aiThinking || 'AI Thinking...') : (translations[lang].askAiBtn || 'Ask AI')}
+                        {translations[lang].askAiBtn || 'Ask AI'}
                     </button>
                 </div>
             )}
@@ -609,7 +609,7 @@ export default function FactOpinionModule() {
                                     disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
-                                    {isAiLoading && activeChatTaskKey === 'bTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                    {t.askAiBtn || 'Ask AI'}
                                 </button>
                             </div>
                         )}
@@ -702,7 +702,7 @@ export default function FactOpinionModule() {
                                     disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
-                                    {isAiLoading && activeChatTaskKey === 'iTask1' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                    {t.askAiBtn || 'Ask AI'}
                                 </button>
                             </div>
                         )}
@@ -759,7 +759,7 @@ export default function FactOpinionModule() {
                                     disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
-                                    {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                    {t.askAiBtn || 'Ask AI'}
                                 </button>
                             </div>
                         )}
@@ -877,7 +877,7 @@ export default function FactOpinionModule() {
                                     disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
-                                    {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.askAiBtn || 'Ask AI')}
+                                    {t.askAiBtn || 'Ask AI'}
                                 </button>
                             </div>
                         )}
