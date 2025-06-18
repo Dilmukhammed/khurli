@@ -230,5 +230,42 @@ const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers
 export default {
     getModuleProgress,
     markTaskAsCompleted,
-    getAiProverbExplanation, // Add new function here
+    getAiProverbExplanation,
+    getAiDebateDiscussion, // Added new function here
 };
+
+// Function to get AI feedback for debate discussions
+async function getAiDebateDiscussion(block_context, user_answers, user_query = '') {
+    let token = authService.getAuthToken();
+    if (!token) {
+        throw new Error('User not authenticated. Cannot fetch AI debate discussion.');
+    }
+
+    const requestUrl = `${API_BASE_URL}/ai-debate-discussion/`; // Ensure this matches your Django URL
+    const requestBody = {
+        block_context: block_context,
+        user_answers: user_answers, // This will be the user's arguments/thoughts
+        user_query: user_query,     // For follow-up questions/comments
+        interaction_type: 'discuss_open_ended', // Hardcoded for this type of interaction
+        // 'correct_answers' is not typically needed for debates, so it's omitted
+    };
+
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        return await handleResponse(response); // Reusing the existing robust handler
+    } catch (error) {
+        // Similar to getAiProverbExplanation, detailed refresh logic could be added
+        // but for now, relying on handleResponse and higher-level error handling.
+        console.error('Error in getAiDebateDiscussion:', error);
+        throw error;
+    }
+}

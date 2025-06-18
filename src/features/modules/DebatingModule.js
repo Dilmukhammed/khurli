@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService';
+import AiChatWindow from '../../components/common/AiChatWindow';
 
 // --- Reusable UI Components ---
 
@@ -32,22 +34,49 @@ const SubmitButton = ({ onClick, color = 'indigo', children }) => {
 
 // --- Task-Specific Components ---
 
-const AgreeDisagreeTask = ({ taskData, t, color }) => (
-    <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
-        <div className="space-y-6">
-            {taskData.statements.map(stmt => (
-                <div key={stmt.id}>
-                    <p className="font-medium text-sm">{t[stmt.textKey]}</p>
-                    <div className="mt-2">
-                        <label className="mr-4 text-sm"><input type="radio" name={stmt.id} className="mr-1"/> {t.agree}</label>
-                        <label className="text-sm"><input type="radio" name={stmt.id} className="mr-1"/> {t.disagree}</label>
-                    </div>
-                    <textarea rows="2" className="mt-2 w-full p-2 border rounded-md text-sm" placeholder={t.explanationPlaceholder}></textarea>
+// Part 1: Refactor AgreeDisagreeTask Component
+const AgreeDisagreeTask = ({ taskData, t, taskKey, answers, onAnswerChange, disabled }) => (
+    <div className="space-y-6">
+        {taskData.statements.map(stmt => (
+            <div key={stmt.id}>
+                <p className="font-medium text-sm">{t[stmt.textKey]}</p>
+                <div className="mt-2">
+                    <label className="mr-4 text-sm">
+                        <input
+                            type="radio"
+                            name={`${taskKey}_${stmt.id}_choice`}
+                            value="agree"
+                            className="mr-1"
+                            onChange={(e) => onAnswerChange(taskKey, `${stmt.id}_choice`, e.target.value)}
+                            checked={answers[taskKey]?.[`${stmt.id}_choice`] === 'agree'}
+                            disabled={disabled}
+                        />
+                        {t.agree}
+                    </label>
+                    <label className="text-sm">
+                        <input
+                            type="radio"
+                            name={`${taskKey}_${stmt.id}_choice`}
+                            value="disagree"
+                            className="mr-1"
+                            onChange={(e) => onAnswerChange(taskKey, `${stmt.id}_choice`, e.target.value)}
+                            checked={answers[taskKey]?.[`${stmt.id}_choice`] === 'disagree'}
+                            disabled={disabled}
+                        />
+                        {t.disagree}
+                    </label>
                 </div>
-            ))}
-        </div>
-        <SubmitButton color={color}>{t.submitBtn}</SubmitButton>
-    </TaskCard>
+                <textarea
+                    rows="2"
+                    className="mt-2 w-full p-2 border rounded-md text-sm"
+                    placeholder={t.explanationPlaceholder}
+                    onChange={(e) => onAnswerChange(taskKey, `${stmt.id}_explanation`, e.target.value)}
+                    value={answers[taskKey]?.[`${stmt.id}_explanation`] || ''}
+                    disabled={disabled}
+                ></textarea>
+            </div>
+        ))}
+    </div>
 );
 
 const ProblemSolutionTask = ({ taskData, t, color }) => (
@@ -64,42 +93,70 @@ const ProblemSolutionTask = ({ taskData, t, color }) => (
     </TaskCard>
 );
 
-const CaseStudyTask = ({ taskData, t, color }) => (
-     <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
-        <div className="space-y-6">
-            {taskData.cases.map(caseItem => (
-                <div key={caseItem.id}>
-                    <h4 className="font-semibold text-gray-700">{t[caseItem.titleKey]}</h4>
-                    <p className="text-sm text-gray-600 my-2">{t[caseItem.descKey]}</p>
-                    {caseItem.prompts.map(prompt => (
+// Part 1: Refactor CaseStudyTask Component
+const CaseStudyTask = ({ taskData, t, taskKey, answers, onAnswerChange, disabled }) => (
+    <div className="space-y-6">
+        {taskData.cases.map(caseItem => (
+            <div key={caseItem.id}>
+                <h4 className="font-semibold text-gray-700">{t[caseItem.titleKey]}</h4>
+                <p className="text-sm text-gray-600 my-2">{t[caseItem.descKey]}</p>
+                {caseItem.prompts.map(prompt => {
+                    const itemKey = `${caseItem.id}_${prompt.labelKey.replace(/\s+/g, '_')}`;
+                    return (
                         <div key={prompt.labelKey} className="mt-2">
                             <label className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
-                            <textarea rows="3" className="mt-1 w-full p-2 border rounded-md text-sm" placeholder={t.yourThoughtsPlaceholder}></textarea>
+                            <textarea
+                                rows="3"
+                                className="mt-1 w-full p-2 border rounded-md text-sm"
+                                placeholder={t.yourThoughtsPlaceholder}
+                                value={answers[taskKey]?.[itemKey] || ''}
+                                onChange={(e) => onAnswerChange(taskKey, itemKey, e.target.value)}
+                                disabled={disabled}
+                            ></textarea>
                         </div>
-                    ))}
-                </div>
-            ))}
-        </div>
-        <SubmitButton color={color}>{t.submitBtn}</SubmitButton>
-     </TaskCard>
-);
-
-const AdvancedSelectAndWriteTask = ({ taskData, t, color }) => (
-    <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
-        <label htmlFor={taskData.selectId} className="block text-sm font-medium text-gray-700">{t[taskData.selectLabelKey]}</label>
-        <select id={taskData.selectId} className="mt-1 w-full border rounded p-2 text-sm">
-            <option>{t.selectOptionDefault}</option>
-            {taskData.options.map(opt => <option key={opt.value} value={opt.value}>{t[opt.textKey]}</option>)}
-        </select>
-        {taskData.prompts.map(prompt => (
-            <div key={prompt.labelKey} className="mt-4">
-                <label className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
-                <textarea rows="8" className="mt-1 w-full border rounded p-2 text-sm" placeholder={t[prompt.placeholderKey]}></textarea>
+                    );
+                })}
             </div>
         ))}
-        <SubmitButton color={color}>{t.submitBtn}</SubmitButton>
-    </TaskCard>
+    </div>
 );
+
+// Part 1: Refactor AdvancedSelectAndWriteTask Component
+const AdvancedSelectAndWriteTask = ({ taskData, t, taskKey, answers, onAnswerChange, disabled, selectItemKey, textareaItemKey }) => {
+    // Assuming taskData.prompts[0] is the relevant prompt for the textarea
+    const prompt = taskData.prompts[0];
+
+    return (
+        <>
+            <label htmlFor={taskData.selectId || taskKey + "_select"} className="block text-sm font-medium text-gray-700">{t[taskData.selectLabelKey]}</label>
+            <select
+                id={taskData.selectId || taskKey + "_select"}
+                className="mt-1 w-full border rounded p-2 text-sm"
+                value={answers[taskKey]?.[selectItemKey] || ''}
+                onChange={(e) => onAnswerChange(taskKey, selectItemKey, e.target.value)}
+                disabled={disabled}
+            >
+                <option value="">{t.selectOptionDefault}</option>
+                {taskData.options.map(opt => <option key={opt.value} value={opt.value}>{t[opt.textKey]}</option>)}
+            </select>
+
+            {prompt && ( // Check if prompt exists
+                <div key={prompt.labelKey} className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
+                    <textarea
+                        rows="8"
+                        className="mt-1 w-full border rounded p-2 text-sm"
+                        placeholder={t[prompt.placeholderKey]}
+                        value={answers[taskKey]?.[textareaItemKey] || ''}
+                        onChange={(e) => onAnswerChange(taskKey, textareaItemKey, e.target.value)}
+                        disabled={disabled}
+                    ></textarea>
+                </div>
+            )}
+        </>
+    );
+};
+
 const CrossCulturalComparisonTask = ({ taskData, t, color }) => (
      <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
         <div className="space-y-4">
@@ -125,9 +182,22 @@ const CrossCulturalComparisonTask = ({ taskData, t, color }) => (
 
 // --- Main Module Component ---
 const DebatingModule = () => {
-    const language = localStorage.getItem('logiclingua-lang') || 'ru';
+    const [language, setLanguage] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
+    const [answers, setAnswers] = useState({});
+    const [showAiButtons, setShowAiButtons] = useState({});
+    const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentErrors, setCurrentErrors] = useState({}); // For displaying errors
 
-    const t = {
+    useEffect(() => {
+        const storedLang = localStorage.getItem('logiclingua-lang') || 'ru';
+        setLanguage(storedLang);
+        // document.documentElement.lang = storedLang; // If you set lang attribute on <html>
+        // document.title = t.pageTitle; // If pageTitle is part of your translations
+    }, []); // Removed language from dependency array to avoid potential re-renders if t object is complex
+
+    const t = { // Assuming t object is relatively static or derived correctly based on language state elsewhere if this component re-renders often.
         ru: { 
             pageTitle: "Обсуждение социальных вопросов в Узбекистане", 
             beginnerLevel: "Начальный уровень – Выражение мнения",
@@ -307,6 +377,168 @@ const DebatingModule = () => {
         }
     }[language];
 
+    const handleAnswerChange = (taskKey, itemKey, value) => {
+        setAnswers(prev => ({
+            ...prev,
+            [taskKey]: { ...prev[taskKey], [itemKey]: value }
+        }));
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
+        setCurrentErrors(prev => ({...prev, [taskKey]: null}));
+    };
+
+    const handleSubmit = (taskKey) => {
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
+        setCurrentErrors(prev => ({...prev, [taskKey]: null}));
+        // Example: setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t.submissionReceived || 'Your response has been recorded.' }}));
+    };
+
+    const getTaskDetailsForAI_Debate = (taskKey) => {
+        const taskAnswers = answers[taskKey] || {};
+        let taskBlockContext = `Context for ${taskKey}`;
+        let userAnswersFormattedStrings = [];
+        const taskSpecificAnswers = answers[taskKey] || {};
+
+        if (taskKey === 'bTask1') {
+            taskBlockContext = `Task: ${t.debatingBTask1Title}\nDescription: ${t.debatingBTask1Desc.replace(/<[^>]*>?/gm, '')}`;
+            if (beginnerTasks && beginnerTasks.agreeDisagree && beginnerTasks.agreeDisagree.statements) {
+                beginnerTasks.agreeDisagree.statements.forEach(stmt => {
+                    const choice = taskSpecificAnswers[`${stmt.id}_choice`] || 'Not answered';
+                    const explanation = taskSpecificAnswers[`${stmt.id}_explanation`] || 'No explanation';
+                    userAnswersFormattedStrings.push(`Statement: ${t[stmt.textKey]}\nYour Choice: ${choice}\nYour Explanation: ${explanation}`);
+                });
+            }
+            if (userAnswersFormattedStrings.length === 0) {
+                userAnswersFormattedStrings.push("User has not provided any answers yet.");
+            }
+        } else if (taskKey === 'iTask2') {
+            const caseContexts = intermediateTasks.caseStudy.cases.map(caseItem =>
+                `Case: ${t[caseItem.titleKey]}\nDescription: ${t[caseItem.descKey.replace(/<[^>]*>?/gm, '')]}`
+            ).join('\n\n');
+            taskBlockContext = `Task: ${t.debatingITask2Title}\nDescription: ${t.debatingITask2Desc.replace(/<[^>]*>?/gm, '')}\n\n${caseContexts}`;
+
+            if (intermediateTasks && intermediateTasks.caseStudy && intermediateTasks.caseStudy.cases) {
+                intermediateTasks.caseStudy.cases.forEach(caseItem => {
+                    caseItem.prompts.forEach(prompt => {
+                        const itemKey = `${caseItem.id}_${prompt.labelKey.replace(/\s+/g, '_')}`;
+                        const response = taskSpecificAnswers[itemKey] || 'No response';
+                        userAnswersFormattedStrings.push(`Case: ${t[caseItem.titleKey]}\nPrompt: ${t[prompt.labelKey]}\nYour Response: ${response}`);
+                    });
+                });
+            }
+            if (userAnswersFormattedStrings.length === 0) {
+                userAnswersFormattedStrings.push("User has not provided any answers yet.");
+            }
+        } else if (taskKey === 'iTask3') {
+            const dilemmaTexts = intermediateTasks.ethicalDilemmas.dilemmas.map(d => t[d.textKey]).join('\n\n');
+            taskBlockContext = `Task: ${t.debatingITask3Title}\nDescription: ${t.debatingITask3Desc.replace(/<[^>]*>?/gm, '')}\n\nDilemmas:\n${dilemmaTexts}`;
+
+            if (intermediateTasks && intermediateTasks.ethicalDilemmas && intermediateTasks.ethicalDilemmas.dilemmas) {
+                intermediateTasks.ethicalDilemmas.dilemmas.forEach(dilemma => {
+                    const itemKey = `${dilemma.id}_thoughts`;
+                    const response = taskSpecificAnswers[itemKey] || 'No thoughts provided';
+                    userAnswersFormattedStrings.push(`Dilemma: ${t[dilemma.textKey]}\nYour Thoughts: ${response}`);
+                });
+            }
+            if (userAnswersFormattedStrings.length === 0) {
+                userAnswersFormattedStrings.push("User has not provided any thoughts yet.");
+            }
+        } else if (taskKey === 'aTask2') {
+            const policyTaskData = advancedTasks.policyProposal;
+            const issues = policyTaskData.options.map(opt => t[opt.textKey]).join(', ');
+            taskBlockContext = `Task: ${t.debatingATask2Title}\nDescription: ${t.debatingATask2Desc.replace(/<[^>]*>?/gm, '')}\nAvailable issues: ${issues}`;
+
+            const selectedIssueValue = taskSpecificAnswers['aTask2_selectedIssue'] || 'Not selected';
+            const selectedIssueText = policyTaskData.options.find(opt => opt.value === selectedIssueValue)?.textKey
+                                      ? t[policyTaskData.options.find(opt => opt.value === selectedIssueValue).textKey]
+                                      : selectedIssueValue;
+            const proposalText = taskSpecificAnswers['aTask2_policyProposalText'] || 'No proposal written.';
+            const formatted = `Selected Issue: ${selectedIssueText}\nPolicy Proposal:\n${proposalText}`;
+            userAnswersFormattedStrings.push(formatted);
+
+            if (userAnswersFormattedStrings.length === 0 || proposalText === 'No proposal written.' && selectedIssueValue === 'Not selected') {
+                 userAnswersFormattedStrings = ["User has not provided a complete response yet."];
+            }
+        } else if (taskKey === 'aTask3') {
+            const debateTaskData = advancedTasks.controversialDebate;
+            const topics = debateTaskData.options.map(opt => t[opt.textKey]).join(', ');
+            taskBlockContext = `Task: ${t.debatingATask3Title}\nDescription: ${t.debatingATask3Desc.replace(/<[^>]*>?/gm, '')}\nAvailable topics: ${topics}`;
+
+            const selectedTopicValue = taskSpecificAnswers['aTask3_selectedTopic'] || 'Not selected';
+            const selectedTopicText = debateTaskData.options.find(opt => opt.value === selectedTopicValue)?.textKey
+                                      ? t[debateTaskData.options.find(opt => opt.value === selectedTopicValue).textKey]
+                                      : selectedTopicValue;
+            const speechText = taskSpecificAnswers['aTask3_speechText'] || 'No speech written.';
+            const formatted = `Selected Topic: ${selectedTopicText}\nPersuasive Speech:\n${speechText}`;
+            userAnswersFormattedStrings.push(formatted);
+
+            if (userAnswersFormattedStrings.length === 0 || speechText === 'No speech written.' && selectedTopicValue === 'Not selected') {
+                userAnswersFormattedStrings = ["User has not provided a complete response yet."];
+            }
+        } else {
+            // Generic formatting for other tasks if answers exist
+            if (Object.keys(taskSpecificAnswers).length > 0) {
+                userAnswersFormattedStrings = Object.entries(taskSpecificAnswers).map(([key, value]) => `${key}: ${String(value)}`);
+            } else {
+                userAnswersFormattedStrings.push("User has not provided an answer yet.");
+            }
+        }
+
+        // Ensure user_answers is always an array of strings, even if it's just one formatted string.
+        // For multiple entries like bTask1, we join them into one string.
+        const finalFormattedAnswers = userAnswersFormattedStrings.length > 0 ? [userAnswersFormattedStrings.join('\n\n')] : ["User has not provided an answer yet."];
+
+        return {
+            block_context: taskBlockContext,
+            user_answers: finalFormattedAnswers,
+            interaction_type: 'discuss_open_ended'
+        };
+    };
+
+    const handleAskAI_Debate = async (taskKey, userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChatTaskKey(taskKey);
+        setCurrentErrors(prev => ({...prev, [taskKey]: null}));
+        const thinkingMsg = { sender: 'ai', text: 'Thinking...' };
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else {
+            setChatMessages([thinkingMsg]);
+        }
+
+        try {
+            const { block_context, user_answers } = getTaskDetailsForAI_Debate(taskKey);
+
+            if (!block_context) {
+                 console.error("Could not get task details for AI for taskKey:", taskKey);
+                 setChatMessages(prev => [
+                    ...prev.filter(msg => msg.text !== 'Thinking...'),
+                    { sender: 'ai', text: "Sorry, I couldn't retrieve the task details to ask the AI." }
+                ]);
+                setCurrentErrors(prev => ({...prev, [taskKey]: "Could not retrieve task details."}));
+                setIsAiLoading(false);
+                return;
+            }
+
+            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery);
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== 'Thinking...'),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error) {
+            console.error(`Error fetching AI debate discussion for ${taskKey}:`, error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== 'Thinking...'),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentErrors(prev => ({...prev, [taskKey]: errorMsg }));
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
     // --- Data for all tasks ---
     const beginnerTasks = {
         agreeDisagree: { titleKey: 'debatingBTask1Title', descriptionKey: 'debatingBTask1Desc', statements: [
@@ -338,7 +570,46 @@ const DebatingModule = () => {
             <h1 className="text-4xl font-bold text-gray-900 mb-8">{t.pageTitle}</h1>
             
             <LevelSection title={t.beginnerLevel} colorClass="text-indigo-700">
-                <AgreeDisagreeTask taskData={beginnerTasks.agreeDisagree} t={t} color="indigo" />
+                {/* Part 3: Update DebatingModule JSX for AgreeDisagreeTask */}
+                <TaskCard title={t.debatingBTask1Title} description={t.debatingBTask1Desc}>
+                    <AgreeDisagreeTask
+                        taskData={beginnerTasks.agreeDisagree}
+                        t={t}
+                        taskKey="bTask1"
+                        answers={answers}
+                        onAnswerChange={handleAnswerChange}
+                        disabled={isAiLoading}
+                    />
+                    <SubmitButton onClick={() => handleSubmit('bTask1')} color="indigo" disabled={isAiLoading}>
+                        {t.submitBtn}
+                    </SubmitButton>
+                    {showAiButtons['bTask1'] && !currentErrors['bTask1'] && (
+                        <button
+                            onClick={() => handleAskAI_Debate('bTask1')}
+                            disabled={isAiLoading && activeChatTaskKey === 'bTask1'}
+                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                        >
+                            {isAiLoading && activeChatTaskKey === 'bTask1' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                        </button>
+                    )}
+                    {currentErrors['bTask1'] && <p className="text-red-500 mt-2">{currentErrors['bTask1']}</p>}
+                    {activeChatTaskKey === 'bTask1' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('bTask1', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, ['bTask1']: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
+                </TaskCard>
+
                 <TaskCard title={t.debatingBTask2Title} description={t.debatingBTask2Desc}>
                     <p className="font-medium mb-2">{t.topicsLabel}</p>
                     <ul className="list-decimal list-inside text-sm text-gray-600 space-y-1">
@@ -355,15 +626,87 @@ const DebatingModule = () => {
                        {intermediateTasks.miniDebates.topics.map(topicKey => <li key={topicKey}>{t[topicKey]}</li>)}
                     </ul>
                 </TaskCard>
-                <CaseStudyTask taskData={intermediateTasks.caseStudy} t={t} color="green" />
+                {/* Part 3: Update DebatingModule JSX for CaseStudyTask as iTask2 */}
+                <TaskCard title={t.debatingITask2Title} description={t.debatingITask2Desc}>
+                    <CaseStudyTask
+                        taskData={intermediateTasks.caseStudy}
+                        t={t}
+                        taskKey="iTask2"
+                        answers={answers}
+                        onAnswerChange={handleAnswerChange}
+                        disabled={isAiLoading}
+                    />
+                    <SubmitButton onClick={() => handleSubmit('iTask2')} color="green" disabled={isAiLoading}>
+                        {t.submitBtn}
+                    </SubmitButton>
+                    {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
+                        <button
+                            onClick={() => handleAskAI_Debate('iTask2')}
+                            disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
+                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                        >
+                            {isAiLoading && activeChatTaskKey === 'iTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                        </button>
+                    )}
+                    {currentErrors['iTask2'] && <p className="text-red-500 mt-2">{currentErrors['iTask2']}</p>}
+                    {activeChatTaskKey === 'iTask2' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('iTask2', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, iTask2: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
+                </TaskCard>
                 <TaskCard title={t.debatingITask3Title} description={t.debatingITask3Desc}>
                     {intermediateTasks.ethicalDilemmas.dilemmas.map(dilemma => (
                          <div key={dilemma.id} className="mt-4">
                             <p className="font-medium text-sm">{t[dilemma.textKey]}</p>
-                            <textarea rows="3" className="mt-1 w-full p-2 border rounded-md text-sm" placeholder={t.yourThoughtsPlaceholder}></textarea>
+                            <textarea
+                                rows="3"
+                                className="mt-1 w-full p-2 border rounded-md text-sm"
+                                placeholder={t.yourThoughtsPlaceholder}
+                                value={answers.iTask3?.[`${dilemma.id}_thoughts`] || ''}
+                                onChange={(e) => handleAnswerChange('iTask3', `${dilemma.id}_thoughts`, e.target.value)}
+                                disabled={isAiLoading}
+                            ></textarea>
                         </div>
                     ))}
-                     <SubmitButton color="green">{t.submitBtn}</SubmitButton>
+                    <SubmitButton onClick={() => handleSubmit('iTask3')} color="green" disabled={isAiLoading}>
+                        {t.submitBtn}
+                    </SubmitButton>
+                    {showAiButtons['iTask3'] && !currentErrors['iTask3'] && (
+                        <button
+                            onClick={() => handleAskAI_Debate('iTask3')}
+                            disabled={isAiLoading && activeChatTaskKey === 'iTask3'}
+                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                        >
+                            {isAiLoading && activeChatTaskKey === 'iTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                        </button>
+                    )}
+                    {currentErrors['iTask3'] && <p className="text-red-500 mt-2">{currentErrors['iTask3']}</p>}
+                    {activeChatTaskKey === 'iTask3' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('iTask3', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, iTask3: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
                 </TaskCard>
             </LevelSection>
             
@@ -374,8 +717,88 @@ const DebatingModule = () => {
                        {advancedTasks.parliamentaryDebate.motions.map(motionKey => <li key={motionKey}>{t[motionKey]}</li>)}
                     </ul>
                 </TaskCard>
-                <AdvancedSelectAndWriteTask taskData={advancedTasks.policyProposal} t={t} color="red" />
-                <AdvancedSelectAndWriteTask taskData={advancedTasks.controversialDebate} t={t} color="red" />
+                {/* Part 3: Update DebatingModule JSX for Policy Proposal (aTask2) */}
+                <TaskCard title={t.debatingATask2Title} description={t.debatingATask2Desc}>
+                    <AdvancedSelectAndWriteTask
+                        taskData={advancedTasks.policyProposal}
+                        t={t}
+                        taskKey="aTask2"
+                        answers={answers}
+                        onAnswerChange={handleAnswerChange}
+                        disabled={isAiLoading}
+                        selectItemKey="aTask2_selectedIssue"
+                        textareaItemKey="aTask2_policyProposalText"
+                    />
+                    <SubmitButton onClick={() => handleSubmit('aTask2')} color="red" disabled={isAiLoading}>
+                        {t.submitBtn}
+                    </SubmitButton>
+                    {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
+                        <button
+                            onClick={() => handleAskAI_Debate('aTask2')}
+                            disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
+                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                        >
+                            {isAiLoading && activeChatTaskKey === 'aTask2' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                        </button>
+                    )}
+                    {currentErrors['aTask2'] && <p className="text-red-500 mt-2">{currentErrors['aTask2']}</p>}
+                    {activeChatTaskKey === 'aTask2' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('aTask2', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, aTask2: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
+                </TaskCard>
+                {/* Part 2: Update DebatingModule JSX for Controversial Debate (aTask3) */}
+                <TaskCard title={t.debatingATask3Title} description={t.debatingATask3Desc}>
+                    <AdvancedSelectAndWriteTask
+                        taskData={advancedTasks.controversialDebate}
+                        t={t}
+                        taskKey="aTask3"
+                        answers={answers}
+                        onAnswerChange={handleAnswerChange}
+                        disabled={isAiLoading}
+                        selectItemKey="aTask3_selectedTopic"
+                        textareaItemKey="aTask3_speechText"
+                    />
+                    <SubmitButton onClick={() => handleSubmit('aTask3')} color="red" disabled={isAiLoading}>
+                        {t.submitBtn}
+                    </SubmitButton>
+                    {showAiButtons['aTask3'] && !currentErrors['aTask3'] && (
+                        <button
+                            onClick={() => handleAskAI_Debate('aTask3')}
+                            disabled={isAiLoading && activeChatTaskKey === 'aTask3'}
+                            className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                        >
+                            {isAiLoading && activeChatTaskKey === 'aTask3' ? (t.aiThinking || 'AI Thinking...') : (t.discussAiBtn || 'Discuss with AI')}
+                        </button>
+                    )}
+                    {currentErrors['aTask3'] && <p className="text-red-500 mt-2">{currentErrors['aTask3']}</p>}
+                    {activeChatTaskKey === 'aTask3' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI_Debate('aTask3', message)}
+                            />
+                            <button
+                                onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, aTask3: null})); }}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t.closeAiChat || 'Close AI Chat'}
+                            </button>
+                        </div>
+                    )}
+                </TaskCard>
                 <CrossCulturalComparisonTask taskData={advancedTasks.crossCultural} t={t} color="red" />
             </LevelSection>
         </div>

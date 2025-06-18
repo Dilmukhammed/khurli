@@ -151,3 +151,85 @@ class GeminiProverbExplanationView(APIView):
                 {"error": "Server error processing AI response."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class GeminiDebateDiscussionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        request_serializer = GeminiExplanationRequestSerializer(data=request.data)
+        if not request_serializer.is_valid():
+            return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated_data = request_serializer.validated_data
+        block_context = validated_data.get('block_context')
+        user_answers_list = validated_data.get('user_answers')
+        user_query = validated_data.get('user_query')
+        # interaction_type = validated_data.get('interaction_type') # Likely always 'discuss_open_ended'
+
+        user_written_response = ""
+        if user_answers_list: # For debates, user_answers likely holds the main argument
+            user_written_response = "\n".join(user_answers_list)
+
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return Response(
+                {"error": "GEMINI_API_KEY not configured on the server."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        try:
+            genai.configure(api_key=api_key)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to configure Gemini API: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        topic_relevance_instruction = "IMPORTANT: Confine your entire response to the subject matter of the provided context, user's input, and direct questions about them. Do not provide information or discuss topics outside of this specific context."
+
+        core_debate_instruction = "You are an AI debate coach and discussion facilitator. Your role is to help the user explore various aspects of a social issue or debate topic. Ensure your tone is always polite, respectful, neutral, and encouraging. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their arguments/input as 'your points', 'your arguments', or 'your perspective'. Do NOT speak as if you ARE the user. Your goal is to stimulate critical thinking and deeper understanding."
+        prompt_parts = []
+
+        if user_query: # Follow-up discussion
+            prompt_parts = [
+                core_debate_instruction,
+                "You are continuing a discussion with the user.",
+                f"The main discussion prompt/context was: {block_context}",
+                f"The user initially responded with: {user_written_response}",
+                topic_relevance_instruction,
+                f"The user now has this follow-up question or comment: '{user_query}'",
+                "Please provide a thoughtful and concise response directly TO THE USER for this follow-up, keeping the discussion going. Encourage deeper reflection, explore nuances, or offer related insights, as appropriate. Maintain neutrality and politeness."
+            ]
+        else: # Initial discussion
+            prompt_parts = [
+                core_debate_instruction,
+                f"The discussion prompt/context given to the user was: {block_context}",
+                f"The user has provided the following response/input: {user_written_response}",
+                topic_relevance_instruction,
+                "Acknowledge the user's main points or arguments (e.g., 'Thanks for sharing your thoughts on X. You've made an interesting point about Y.').",
+                "Encourage deeper reflection. You can ask clarifying questions, suggest they consider alternative viewpoints, or gently point out potential assumptions or areas to strengthen their argument (e.g., 'Have you considered how Z might view this?', 'What evidence supports your claim about A?', 'That's a valid perspective. How might someone argue against it?').",
+                "Avoid taking a strong stance yourself; act as a neutral facilitator.",
+                "Invite the user to continue the discussion (e.g., 'What are your further thoughts on this?', 'Is there anything else you'd like to explore regarding this topic?')."
+            ]
+
+        final_prompt = "\n\n".join(prompt_parts)
+        print(f"Gemini DEBATE Interaction Type: {'Follow-up' if user_query else 'Initial'}")
+        print(f"Gemini DEBATE Final Prompt:\n{final_prompt}")
+
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            response_gemini = model.generate_content(final_prompt)
+            ai_explanation = response_gemini.text
+        except Exception as e:
+            print(f"Gemini API Error (Debate View): {str(e)}")
+            error_message = f"Error communicating with AI service: {str(e)}"
+            if hasattr(e, 'message') and e.message: error_message = e.message
+            elif hasattr(e, 'reason') and e.reason: error_message = e.reason
+            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        response_data = {"explanation": ai_explanation}
+        response_serializer = GeminiExplanationResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        else:
+            print(f"Error serializing Gemini response (Debate View): {response_serializer.errors}")
+            return Response({"error": "Server error processing AI response."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
