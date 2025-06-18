@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import moduleService from '../../services/moduleService'; // ASSUMED IMPORT
+import AiChatWindow from '../../components/common/AiChatWindow'; // ASSUMED IMPORT
 
 // Translations for the game component
 const translations = {
@@ -16,7 +18,10 @@ const translations = {
         headline2_text: "В Ташкенте открылся первый ресторан, полностью обслуживаемый роботами.",
         headline3_text: "Узбекистан объявил о планах построить самый высокий небоскреб в Центральной Азии к 2030 году.",
         headline4_text: "Древний артефакт, найденный в Самарканде, доказывает контакт с внеземными цивилизациями.",
-        headline5_text: "Национальная авиакомпания Uzbekistan Airways добавила три новых прямых рейса в города Европы в этом году."
+        headline5_text: "Национальная авиакомпания Uzbekistan Airways добавила три новых прямых рейса в города Европы в этом году.",
+        askAiButton: "Спросить ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChatButton: "Закрыть чат",
     },
     en: {
         pageTitle: "Game: Fact or Fake?",
@@ -32,7 +37,10 @@ const translations = {
         headline2_text: "The first robot-only restaurant opened in Tashkent.",
         headline3_text: "Uzbekistan announced plans to build the tallest skyscraper in Central Asia by 2030.",
         headline4_text: "An ancient artifact found in Samarkand proves contact with extraterrestrial civilizations.",
-        headline5_text: "The national airline Uzbekistan Airways added three new direct flights to European cities this year."
+        headline5_text: "The national airline Uzbekistan Airways added three new direct flights to European cities this year.",
+        askAiButton: "Ask AI",
+        aiThinking: "AI Thinking...",
+        closeAiChatButton: "Close AI Chat",
     }
 };
 
@@ -53,6 +61,11 @@ export default function FactOrFakeGame() {
     const [userAnswers, setUserAnswers] = useState({});
     // State to store the results after checking answers
     const [results, setResults] = useState({ feedback: '', score: null, details: {} });
+    const [showMainAiButton, setShowMainAiButton] = useState(false);
+    const [activeChat, setActiveChat] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentError, setCurrentError] = useState('');
 
     // Effect to update component language if it changes in another tab
     useEffect(() => {
@@ -77,7 +90,7 @@ export default function FactOrFakeGame() {
         }));
     };
 
-    const checkAnswers = () => {
+    const handleCheckAnswersAndEnableAI = () => {
         let correctCount = 0;
         const newResultDetails = {};
 
@@ -104,7 +117,84 @@ export default function FactOrFakeGame() {
                 details: newResultDetails
             });
         }
+        setShowMainAiButton(true);
+        setActiveChat(false);
+        setChatMessages([]);
+        setCurrentError('');
     };
+
+    const getTaskDetailsForAI_FactOrFake = useCallback(() => {
+        const t = translations[lang];
+        const contextParts = [
+            `Game: ${t.gameTitle}`,
+            `Instructions: ${t.gameInstructions}`,
+            "Headlines presented to the user:"
+        ];
+        gameHeadlines.forEach((headline, index) => {
+            contextParts.push(`${index + 1}. ${t[headline.text_key]}`);
+        });
+
+        const userAnswersFormatted = gameHeadlines.map((headline, index) => {
+            const userAnswer = userAnswers[headline.id] || 'Not answered';
+            const correctAnswer = headline.correctAnswer;
+            const isCorrect = userAnswer === correctAnswer ? 'Correct' : 'Incorrect';
+            return `Headline ${index + 1} ("${t[headline.text_key].substring(0, 30)}..."): You answered '${userAnswer}', Correct was '${correctAnswer}'. (${isCorrect})`;
+        }).join('\n');
+
+        let resultsSummary = "User has not checked answers yet.";
+        if (results && results.feedback) {
+            resultsSummary = `User's results: ${results.feedback}`;
+        }
+
+        return {
+            block_context: contextParts.join('\n'),
+            user_answers: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
+            interaction_type: 'discuss_game_fact_or_fake'
+        };
+    }, [lang, userAnswers, results]);
+
+    const handleAskAI_FactOrFake = useCallback(async (userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChat(true);
+        setCurrentError('');
+        const t = translations[lang];
+        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else {
+            setChatMessages([{ sender: 'ai', text: `You can ask about why certain headlines are facts or fakes, or discuss your results.` }, thinkingMsg]);
+        }
+
+        try {
+            const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_FactOrFake();
+
+            const response = await moduleService.getGenericAiInteraction({
+                module_id: 'game-fact-or-fake',
+                task_id: 'main_game',
+                interaction_type,
+                block_context,
+                user_answers,
+                user_query
+            });
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error) {
+            console.error('Error fetching AI for FactOrFakeGame:', error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentError(errorMsg);
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_FactOrFake, lang]);
     
     // Helper function to get the appropriate CSS class for a result
     const getResultClass = (headlineId) => {
@@ -163,7 +253,7 @@ export default function FactOrFakeGame() {
                 </div>
 
                 <button
-                    onClick={checkAnswers}
+                    onClick={handleCheckAnswersAndEnableAI}
                     className="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
                 >
                     {t.checkAnswersButton}
@@ -172,6 +262,36 @@ export default function FactOrFakeGame() {
                 {results.feedback && (
                     <div className={`mt-6 text-center text-lg font-semibold ${results.score === gameHeadlines.length ? 'text-green-600' : 'text-red-600'}`}>
                         {results.feedback}
+                    </div>
+                )}
+
+                {showMainAiButton && !currentError && (
+                    <div> {/* Wrapper for Ask AI button */}
+                        <button
+                            onClick={() => handleAskAI_FactOrFake()}
+                            disabled={isAiLoading}
+                            className="mt-4 w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50"
+                        >
+                            {t.askAiButton}
+                        </button>
+                    </div>
+                )}
+
+                {currentError && <p className="mt-4 text-center text-red-600">{currentError}</p>}
+
+                {activeChat && (
+                    <div className="mt-6 p-4 border-t border-gray-200">
+                        <AiChatWindow
+                            messages={chatMessages}
+                            isLoading={isAiLoading}
+                            onSendMessage={(message) => handleAskAI_FactOrFake(message)}
+                        />
+                        <button
+                            onClick={() => setActiveChat(false)}
+                            className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            {t.closeAiChatButton}
+                        </button>
                     </div>
                 )}
             </div>
