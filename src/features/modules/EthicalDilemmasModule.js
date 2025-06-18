@@ -306,10 +306,20 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
     }, [isAiLoading, getTaskDetailsForAI_EthicalDilemmas, t]);
 
 
-    const renderTask = (task) => (
-        <div key={task.taskKey} className="task-card bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <h4 className="text-lg font-semibold mb-2 text-gray-800">{t[task.titleKey]}</h4>
-            <p className="text-sm text-gray-600 mb-4" dangerouslySetInnerHTML={{ __html: t[task.descriptionKey] }}></p>
+    const renderTask = (task, level) => {
+        let buttonColorClasses = 'bg-gray-500 hover:bg-gray-600'; // Default/fallback
+        if (level === 'beginner') {
+            buttonColorClasses = 'bg-indigo-500 hover:bg-indigo-600';
+        } else if (level === 'intermediate') {
+            buttonColorClasses = 'bg-green-500 hover:bg-green-600';
+        } else if (level === 'advanced') {
+            buttonColorClasses = 'bg-red-500 hover:bg-red-600';
+        }
+
+        return (
+            <div key={task.taskKey} className="task-card bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <h4 className="text-lg font-semibold mb-2 text-gray-800">{t[task.titleKey]}</h4>
+                <p className="text-sm text-gray-600 mb-4" dangerouslySetInnerHTML={{ __html: t[task.descriptionKey] }}></p>
             <div className="space-y-4">
                 {task.questions.map((q, qIndex) => {
                     const questionKey = q.key || `q${qIndex}`;
@@ -332,9 +342,9 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                 <button
                     onClick={() => handleSubmit(task.taskKey)}
                     disabled={isAiLoading}
-                    className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300"
+                    className={`mt-4 ${buttonColorClasses} text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300`}
                 >
-                    {t.submitBtn || "Submit Answers"}
+                    {"Submit"}
                 </button>
             </div>
             {showAiButtons[task.taskKey] && !currentErrors[task.taskKey] && (
@@ -379,7 +389,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-indigo-700 mb-6">{t.beginnerLevel}</h3>
                         <div className="space-y-8">
-                            {beginnerEthicsTasks.map(task => renderTask(task))}
+                            {beginnerEthicsTasks.map(task => renderTask(task, 'beginner'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
@@ -387,7 +397,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-green-700 mb-6">{t.intermediateLevel}</h3>
                         <div className="space-y-8">
-                           {intermediateEthicsTasks.map(task => renderTask(task))}
+                           {intermediateEthicsTasks.map(task => renderTask(task, 'intermediate'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
@@ -395,7 +405,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                     <div className="level-section bg-white p-6 rounded-lg shadow">
                         <h3 className="text-xl font-bold text-red-700 mb-6">{t.advancedLevel}</h3>
                         <div className="space-y-8">
-                            {advancedEthicsTasks.map(task => renderTask(task))}
+                            {advancedEthicsTasks.map(task => renderTask(task, 'advanced'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
@@ -408,7 +418,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                      <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-indigo-700 mb-6">{t.problemSolvingBLevel}</h3>
                         <div className="space-y-8">
-                            {beginnerProblemsTasks.map(task => renderTask(task))}
+                            {beginnerProblemsTasks.map(task => renderTask(task, 'beginner'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
@@ -416,7 +426,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-green-700 mb-6">{t.problemSolvingILevel}</h3>
                         <div className="space-y-8">
-                           {intermediateProblemsTasks.map(task => renderTask(task))}
+                           {intermediateProblemsTasks.map(task => renderTask(task, 'intermediate'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
@@ -424,7 +434,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                     <div className="level-section bg-white p-6 rounded-lg shadow">
                         <h3 className="text-xl font-bold text-red-700 mb-6">{t.problemSolvingALevel}</h3>
                         <div className="space-y-8">
-                            {advancedProblemsTasks.map(task => renderTask(task))}
+                            {advancedProblemsTasks.map(task => renderTask(task, 'advanced'))}
                         </div>
                         {/* Removed per-level submit button */}
                     </div>
