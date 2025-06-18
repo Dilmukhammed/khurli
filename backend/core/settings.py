@@ -46,7 +46,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False, # Default is False
 
     'ALGORITHM': 'HS256', # Default
-    'SIGNING_KEY': None, # Defaults to settings.SECRET_KEY, making it explicit
+    'SIGNING_KEY': SECRET_KEY, # Explicitly use the SECRET_KEY defined in this file
     'VERIFYING_KEY': None, # Default
     'AUDIENCE': None, # Default
     'ISSUER': None, # Default
@@ -55,8 +55,8 @@ SIMPLE_JWT = {
 
     'AUTH_HEADER_TYPES': ('Bearer',), # Default
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION', # Default
-    'USER_ID_FIELD': 'user_id', # Default
-    'USER_ID_CLAIM': 'user_id', # Default
+    'USER_ID_FIELD': 'id', # Default
+    'USER_ID_CLAIM': 'id', # Default
     'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule', # Default
 
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',), # Default
