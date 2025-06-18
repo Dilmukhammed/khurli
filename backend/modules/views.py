@@ -66,51 +66,53 @@ class GeminiProverbExplanationView(APIView):
             formatted_user_answers = '; '.join(user_answers_list)
             formatted_correct_answers = '; '.join(correct_answers_list) if correct_answers_list else "Not applicable for this query."
 
+            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'."
+
             if user_query: # Follow-up for mistake explanation
                 prompt_parts = [
-                    "You are an AI assistant who previously provided an explanation to the user about cultural proverbs.",
-                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
+                    new_core_instruction,
+                    "You previously provided an explanation to the user regarding the following context:",
                     f"Original Context/Questions: {block_context}",
-                    f"Your original answers to that context were: {formatted_user_answers}",
+                    f"The user's original answers were: {formatted_user_answers}",
                     f"Correct Answers for that context: {formatted_correct_answers}",
                     topic_relevance_instruction,
-                    f"The user (you) now has a follow-up question: '{user_query}'. Please answer this question directly.",
-                    "Please provide a concise answer ONLY to this follow-up question. Do not repeat the full initial explanation unless a small part of it is absolutely necessary. Focus on the new question."
+                    f"The user now has a specific follow-up question: '{user_query}'",
+                    "Please provide a concise answer directly TO THE USER for this follow-up question. Focus on their new question."
                 ]
             else: # Initial mistake explanation
                 prompt_parts = [
-                    "You are an AI assistant helping a user learn about cultural proverbs.",
-                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
+                    new_core_instruction,
                     "The user was presented with the following context/questions related to proverbs:",
                     f"Context/Questions: {block_context}",
-                    f"Your answers were: {formatted_user_answers}",
+                    f"The user's answers were: {formatted_user_answers}",
                     f"The correct answers are: {formatted_correct_answers}",
                     topic_relevance_instruction,
-                    "Please analyze your answers based on the correct answers.",
-                    "Provide brief, clear explanations for any mistakes you made. If there are no mistakes in your answers, please acknowledge that.",
-                    "After your explanation, please ask if you have any further questions."
+                    "Now, please analyze the user's answers and explain any mistakes directly to them. For example, start with 'In your answer to question 1, you mentioned X, but the correct approach is Y because...'.",
+                    "If all answers are correct, acknowledge this by saying something like 'Your answers are all correct!' or 'You've answered everything correctly!'.",
+                    "After your analysis/acknowledgement, please ask the user if they have any further questions, like 'Do you have any questions about this?'."
                 ]
         elif interaction_type == 'discuss_open_ended':
+            new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'." # Duplicated for safety, though ideally defined once.
+
             if user_query: # Follow-up within a discussion
                 prompt_parts = [
-                    "You are an AI assistant facilitating a discussion with the user on a cultural proverb or topic.",
-                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
+                    new_core_instruction,
+                    "You are continuing a discussion with the user.",
                     f"The main discussion prompt/context was: {block_context}",
-                    f"Your initial response was: {user_written_response}", # This is the user's main essay/answer
+                    f"The user initially responded with: {user_written_response}", # This is the user's main essay/answer
                     topic_relevance_instruction,
-                    f"The user (you) now has a follow-up question or comment: '{user_query}'. Please respond to this follow-up directly.",
-                    "Please provide a thoughtful and concise response to this follow-up, keeping the discussion going. Encourage deeper reflection or offer related insights if appropriate. Do not repeat your entire previous feedback unless a small part is essential for context."
+                    f"The user now has this follow-up question or comment: '{user_query}'",
+                    "Please provide a thoughtful and concise response directly TO THE USER for this follow-up, keeping the discussion going. Encourage deeper reflection or offer related insights if appropriate."
                 ]
             else: # Initial feedback on a discussion response
                 prompt_parts = [
-                    "You are an AI assistant designed to provide feedback and facilitate discussion on the user's response to open-ended questions about cultural topics/proverbs.",
-                    "IMPORTANT: You are speaking directly to the user. Address them using 'you' and 'your'. Refer to their inputs as 'your answers' or 'your response'.",
+                    new_core_instruction,
                     f"The discussion prompt/context given to the user was: {block_context}",
-                    f"Your response was: {user_written_response}",
+                    f"The user has provided the following response/input: {user_written_response}",
                     topic_relevance_instruction,
-                    "Please review your response. Provide constructive feedback on your input (e.g., acknowledge your points, suggest areas for deeper thought, offer different perspectives, or check for understanding if applicable).",
+                    "Please review the user's response. Provide constructive feedback directly TO THE USER on their input (e.g., acknowledge their points by saying 'You made a good point about...' or 'Your analysis of X was insightful because...', suggest areas for deeper thought, or offer different perspectives).",
                     "Your feedback should be encouraging and aim to stimulate further thought.",
-                    "After providing your feedback on your initial response, please invite you to ask further questions or discuss related ideas."
+                    "After providing your feedback on their initial response, please invite the user to ask further questions or discuss related ideas, for example: 'What are your further thoughts on this?' or 'Do you have any questions?'."
                 ]
         else:
             return Response({"error": "Invalid interaction_type specified."}, status=status.HTTP_400_BAD_REQUEST)
