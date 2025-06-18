@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import moduleService from '../../services/moduleService';
 import AiChatWindow from '../../components/common/AiChatWindow';
+import { useAuth } from '../../contexts/AuthContext'; // Assuming path
 
 // Translations object containing all the text for both languages.
 // In a real application, this would likely be moved to a dedicated i18n library.
@@ -122,7 +123,7 @@ const advancedTask1Data = [
 
 
 // Reusable component for multiple choice questions (Radio buttons)
-const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, options, checkBtnText, allCorrectMsg, someIncorrectMsg, onAnswersChecked, onAskAi, showAskAiButton, isMainAiLoading, activeAiTaskKey }) => {
+const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, options, checkBtnText, allCorrectMsg, someIncorrectMsg, isCompleted = false, onAnswersChecked, onAskAi, showAskAiButton, isMainAiLoading, activeAiTaskKey }) => {
     const [answers, setAnswers] = useState({});
     const [results, setResults] = useState({});
     const [feedback, setFeedback] = useState('');
@@ -164,7 +165,13 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
         }
         // Notify parent about the checked answers
         if (onAnswersChecked) {
-            onAnswersChecked(taskKey, { questionsData: questions, userAnswers: answers, validationResults: results, optionsData: options });
+            onAnswersChecked(taskKey, {
+                questionsData: questions,
+                userAnswers: answers,
+                validationResults: newResults, // Use the just-calculated newResults
+                optionsData: options,
+                allCorrect: allCorrect // Add this line
+            });
         }
     };
 
@@ -197,6 +204,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
                                         value={value}
                                         checked={answers[q.id] === value}
                                         onChange={() => handleAnswerChange(q.id, value)}
+                                        disabled={isCompleted || (isMainAiLoading && activeAiTaskKey === taskKey)}
                                         className="radio-input mr-2 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                                     />
                                     <span>{translations[lang][labelKey]}</span>
@@ -209,6 +217,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
             <div>
                 <button
                     onClick={handleCheckAnswersInternal}
+                    disabled={isCompleted}
                     className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                     {checkBtnText}
@@ -275,6 +284,39 @@ export default function FactOpinionModule() {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [currentErrors, setCurrentErrors] = useState({});
     const [currentTaskAiContext, setCurrentTaskAiContext] = useState(null); // Added state
+    const [completedTasks, setCompletedTasks] = useState({});
+    const [progressLoading, setProgressLoading] = useState(true);
+    const { isAuthenticated } = useAuth();
+
+    const isTaskCompleted = (taskKey) => !!completedTasks[taskKey];
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            setProgressLoading(true);
+            moduleService.getModuleProgress('fact-opinion')
+                .then(progressData => {
+                    const initialCompleted = {};
+                    if (progressData && Array.isArray(progressData)) {
+                        progressData.forEach(item => {
+                            if (item.status === 'completed') {
+                                initialCompleted[item.task_id] = true;
+                            }
+                        });
+                    }
+                    setCompletedTasks(initialCompleted);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch module progress for fact-opinion:", err);
+                    // setProgressError(err.message || "Could not load progress.");
+                })
+                .finally(() => {
+                    setProgressLoading(false);
+                });
+        } else {
+            setCompletedTasks({}); // Clear progress if not authenticated
+            setProgressLoading(false);
+        }
+    }, [isAuthenticated]);
 
     const handleAnswerChangeFactOpinion = useCallback((taskKey, itemKey, value) => {
         setAnswers(prev => ({ ...prev, [taskKey]: { ...prev[taskKey], [itemKey]: value } }));
@@ -286,13 +328,25 @@ export default function FactOpinionModule() {
     const handleSubmitFactOpinion = useCallback((taskKey, dataFromChild) => {
         setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
         setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
-        // Store data from child if needed, or use it to pre-populate currentTaskAiContext for AI
-        // For MultipleChoiceTask, dataFromChild contains { questionsData, userAnswers, validationResults, optionsData }
-        // This could be useful if we want getTaskDetailsForAI_FactOpinion to read from main 'answers' state
-        // instead of relying only on 'additionalData' from handleAskAiFactOpinion.
-        // For now, handleAskAiFactOpinion passes 'additionalData' directly.
-        // console.log(`Data from child for ${taskKey}:`, dataFromChild);
-    }, []);
+
+        if ((taskKey === 'bTask3' || taskKey === 'aTask1') && dataFromChild.allCorrect) {
+            if (isAuthenticated && !isTaskCompleted(taskKey)) {
+                moduleService.markTaskAsCompleted('fact-opinion', taskKey)
+                    .then(() => {
+                        setCompletedTasks(prev => ({ ...prev, [taskKey]: true }));
+                        // Optional: setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
+                    })
+                    .catch(err => {
+                        console.error(`Error saving progress for ${taskKey} (fact-opinion):`, err);
+                        // Optionally set an error message to display to the user
+                    });
+            } else if (!isAuthenticated && dataFromChild.allCorrect) {
+                // If not authenticated, still reflect completion visually for the session
+                setCompletedTasks(prev => ({ ...prev, [taskKey]: true }));
+                // Optional: setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
+            }
+        }
+    }, [isAuthenticated, completedTasks]);
 
     const getTaskDetailsForAI_FactOpinion = useCallback((taskKey, additionalData = {}) => {
         // Initialize requestData structure for getGenericAiInteraction
@@ -631,7 +685,7 @@ export default function FactOpinionModule() {
 
                     <MultipleChoiceTask
                         taskKey="bTask3"
-                        title={t.factBTask3Title}
+                        title={<>{t.factBTask3Title} {isTaskCompleted('bTask3') && !progressLoading && <span className='text-green-600 font-bold ml-2 text-sm'>({t.completedText || 'Completed'})</span>}</>}
                         description={t.factBTask3Desc}
                         questions={beginnerTask3Data}
                         lang={lang}
@@ -640,6 +694,7 @@ export default function FactOpinionModule() {
                         allCorrectMsg={t.allCorrectMessage}
                         someIncorrectMsg={t.someIncorrectMessage}
                         onAnswersChecked={handleSubmitFactOpinion} // Added
+                        isCompleted={isTaskCompleted('bTask3') || progressLoading}
                         onAskAi={handleAskAiFactOpinion} // Added
                         showAskAiButton={showAiButtons['bTask3']} // Added
                         isMainAiLoading={isAiLoading} // Added
@@ -786,7 +841,7 @@ export default function FactOpinionModule() {
 
                     <MultipleChoiceTask
                         taskKey="aTask1" // Changed from taskId
-                        title={t.factATask1Title}
+                        title={<>{t.factATask1Title} {isTaskCompleted('aTask1') && !progressLoading && <span className='text-green-600 font-bold ml-2 text-sm'>({t.completedText || 'Completed'})</span>}</>}
                         description={t.factATask1Desc}
                         questions={advancedTask1Data}
                         lang={lang}
@@ -795,6 +850,7 @@ export default function FactOpinionModule() {
                         allCorrectMsg={t.allCorrectMessage}
                         someIncorrectMsg={t.someIncorrectMessage}
                         onAnswersChecked={handleSubmitFactOpinion} // Added
+                        isCompleted={isTaskCompleted('aTask1') || progressLoading}
                         onAskAi={handleAskAiFactOpinion} // Added
                         showAskAiButton={showAiButtons['aTask1']} // Added
                         isMainAiLoading={isAiLoading} // Added
