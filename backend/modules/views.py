@@ -53,23 +53,37 @@ class GeminiProverbExplanationView(APIView):
             )
 
         # 3. Construct the prompt
-        prompt_parts = [
-            "You are an AI assistant helping a user learn about cultural proverbs.",
-            "The user was presented with the following context/questions related to proverbs:",
-            f"Context/Questions: {block_context}",
-            f"The user's answers were: {user_answers}",
-            f"The correct answers are: {correct_answers}",
-            "Please analyze the user's answers based on the correct answers.",
-            "Provide brief, clear explanations for any mistakes the user made.",
-            "If there are no mistakes, acknowledge that."
-        ]
+        topic_relevance_instruction = "IMPORTANT: Confine your entire response to the subject matter of the provided proverbs, user's answers, and direct questions about them. Do not provide information or discuss topics outside of this specific context."
 
         if user_query:
-            prompt_parts.append(f"The user also has a specific follow-up question: '{user_query}'. Please answer this question in context.")
+            # Prompt for a follow-up question
+            prompt_parts = [
+                "You are an AI assistant who previously provided an explanation about cultural proverbs based on the following context:",
+                f"Original Context/Questions: {block_context}",
+                f"User's Answers to that context: {'; '.join(user_answers)}",
+                f"Correct Answers for that context: {'; '.join(correct_answers)}",
+                topic_relevance_instruction, # Added instruction
+                "The user now has a specific follow-up question regarding this context or your previous explanation.",
+                f"User's follow-up question: '{user_query}'",
+                "Please provide a concise answer ONLY to this follow-up question. Do not repeat the full initial explanation unless a small part of it is absolutely necessary to answer the current question. Focus on the new question."
+            ]
         else:
-            prompt_parts.append("After your explanation of any mistakes (or if there were no mistakes), please offer to answer any further questions the user might have about these proverbs or their explanations.")
+            # Prompt for an initial explanation
+            prompt_parts = [
+                "You are an AI assistant helping a user learn about cultural proverbs.",
+                "The user was presented with the following context/questions related to proverbs:",
+                f"Context/Questions: {block_context}",
+                f"The user's answers were: {'; '.join(user_answers)}", # Join list for readability in prompt
+                f"The correct answers are: {'; '.join(correct_answers)}", # Join list
+                topic_relevance_instruction, # Added instruction
+                "Please analyze the user's answers based on the correct answers.",
+                "Provide brief, clear explanations for any mistakes the user made. If there are no mistakes, acknowledge that.",
+                "After your explanation, please offer to answer any further questions the user might have about these proverbs or their explanations."
+            ]
 
         final_prompt = "\n\n".join(prompt_parts)
+        # Add a log to see the final prompt being sent to Gemini (optional, but good for debugging this step)
+        print(f"Gemini Final Prompt:\n{final_prompt}")
 
         # 4. Initialize the Gemini model and generate content
         try:

@@ -507,10 +507,10 @@ const CulturalProverbsModule = () => {
     const checkIntermediateTask1 = () => checkAnswers('intermediateTask1', { q1: 'd', q2: 'a', q3: 'c', q4: 'e', q5: 'b' });
     
     const handleAskAI = async (taskKey, userQuery = '') => {
-        if (isAiLoading && activeChatTaskKey === taskKey && userQuery) { // Allow sending new query even if loading for same task.
-            // Potentially cancel previous request or queue, but for now, let it proceed if it's a follow-up.
-            // If it's a new initial call (no userQuery) while loading for same task, maybe prevent.
-        } else if (isAiLoading) { // Loading for a different task or initial call for same task
+        console.log('[CulturalProverbsModule] handleAskAI called. taskKey:', taskKey, 'userQuery:', userQuery); // Log 1
+
+        if (isAiLoading) {
+            console.log('[CulturalProverbsModule] AI is already loading. Ignoring request.');
             return;
         }
 
@@ -518,62 +518,50 @@ const CulturalProverbsModule = () => {
         setActiveChatTaskKey(taskKey);
 
         if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }]);
+            setChatMessages(prev => [
+                ...prev,
+                { sender: 'user', text: userQuery },
+                { sender: 'ai', text: 'Thinking...' }
+            ]);
         } else {
-            // Initial call for this task, clear previous messages from other tasks if chat is being reused
-            // Or if chat window is specific per task, this might not be needed if messages are cleared when taskKey changes.
-            // For a single chat window shared across tasks that opens/closes:
-            setChatMessages([{ sender: 'ai', text: 'Let me look at your answers...' }]);
+            setChatMessages([{ sender: 'ai', text: 'Thinking...' }]);
         }
 
         const { block_context, user_answers, correct_answers } = getTaskDetailsForAI(taskKey);
 
         if (!block_context) {
-            console.error("Could not get task details for AI for taskKey:", taskKey);
-            const errorText = "Sorry, I couldn't get the details for this task. Make sure you've interacted with the task first.";
-            setChatMessages(prev => {
-                // If initial call (no userQuery), replace the "Thinking..." message.
-                // If follow-up, append the error.
-                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
-                if (!userQuery && lastMessageIsThinking) {
-                    return [...prev.slice(0, -1), {sender: 'ai', text: errorText}];
-                }
-                return [...prev, {sender: 'ai', text: errorText}];
-            });
+            console.error("[CulturalProverbsModule] Could not get task details for AI. taskKey:", taskKey);
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== 'Thinking...'),
+                {sender: 'ai', text: "Sorry, I couldn't get the details for this task."}
+            ]);
             setIsAiLoading(false);
-            // setActiveChatTaskKey(taskKey); // Already set
             return;
         }
+
+        console.log('[CulturalProverbsModule] Calling service with userQuery:', userQuery); // Log 2
+        console.log('[CulturalProverbsModule] Context being sent:', { block_context, user_answers, correct_answers });
+
 
         try {
             const response = await moduleService.getAiProverbExplanation(
                 block_context,
                 user_answers,
                 correct_answers,
-                userQuery
+                userQuery // Ensure this is the potentially new userQuery
             );
-            // If initial call (no userQuery), replace the "Thinking..." message.
-            // If follow-up, append the new AI response.
-            setChatMessages(prev => {
-                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
-                if (!userQuery && lastMessageIsThinking) {
-                     return [...prev.slice(0, -1), { sender: 'ai', text: response.explanation }];
-                }
-                return [...prev, { sender: 'ai', text: response.explanation }];
-            });
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== 'Thinking...'),
+                { sender: 'ai', text: response.explanation }
+            ]);
         } catch (error) {
-            console.error('Error fetching AI explanation:', error);
-            const errorText = `Sorry, I encountered an error: ${error.message}`;
-            setChatMessages(prev => {
-                const lastMessageIsThinking = prev.length > 0 && prev[prev.length -1].sender === 'ai' && prev[prev.length-1].text === 'Let me look at your answers...';
-                 if (!userQuery && lastMessageIsThinking) {
-                    return [...prev.slice(0, -1), { sender: 'ai', text: errorText }];
-                }
-                return [...prev, { sender: 'ai', text: errorText }];
-            });
+            console.error('[CulturalProverbsModule] Error fetching AI explanation:', error);
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== 'Thinking...'),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${error.message}` }
+            ]);
         } finally {
             setIsAiLoading(false);
-            // setActiveChatTaskKey(taskKey); // Already set, and we want to keep chat open.
         }
     };
 
