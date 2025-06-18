@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService'; // Assuming correct path
+import AiChatWindow from '../../components/common/AiChatWindow'; // Assuming correct path
 
 // Translations object for the Ethical Dilemmas & Problem Solving module.
 const translations = {
@@ -44,7 +46,7 @@ const translations = {
         problemsBTask1Desc: "Дороги в Узбекистане могут быть переполнены, и водители часто не соблюдают правила.",
         problemsBTask1Q1: "Как мы можем сделать дороги безопаснее для пешеходов и водителей? Предложите три простых правила для улучшения дорожного движения.",
         placeholderYourSuggestions: "Ваши предложения...",
-        problemsBTask3Title: "2. Поддержание чистоты в городе",
+        problemsBTask3Title: "2. Поддержание чистоты в городе", // Note: This was BTask3, implies BTask2 might be missing or was intentionally skipped.
         problemsBTask3Desc: "Многие люди бросают мусор на улицах вместо того, чтобы использовать урны.",
         problemsBTask3Q1: "Как мы можем побудить людей выбрасывать мусор в урны? Разработайте плакат или слоган для чистого города.",
         placeholderYourIdeas: "Ваши идеи...",
@@ -53,7 +55,7 @@ const translations = {
         problemsITask1Desc: "В Ташкенте и других крупных городах плохое качество воздуха из-за транспорта и заводов.",
         problemsITask1Q1: "Каковы основные причины загрязнения воздуха в Узбекистане? Предложите три решения для снижения загрязнения.",
         placeholderYourSolutions: "Ваши решения...",
-        problemsITask3Title: "2. Безработица среди молодежи",
+        problemsITask3Title: "2. Безработица среди молодежи", // Note: This was ITask3
         problemsITask3Desc: "Многие молодые люди испытывают трудности с поиском работы после окончания университета.",
         problemsITask3Q1: "Какие навыки должны освоить студенты, чтобы получить лучшую работу? Должно ли правительство помогать выпускникам в поиске работы?",
         problemSolvingALevel: "Продвинутый уровень – Решение сложных проблем и дебаты",
@@ -61,9 +63,12 @@ const translations = {
         problemsATask1Desc: "Узбекистан делит реки с другими странами, но существуют конфликты по поводу использования воды.",
         problemsATask1Q1: "Как Узбекистан может вести переговоры с соседями для справедливого распределения воды? Следует ли стране строить больше водохранилищ?",
         placeholderYourStrategies: "Ваши стратегии...",
-        problemsATask4Title: "2. Устойчивое сельское хозяйство и производство хлопка",
+        problemsATask4Title: "2. Устойчивое сельское хозяйство и производство хлопка", // Note: This was ATask4
         problemsATask4Desc: "Узбекистан экспортирует много хлопка, но это требует большого количества воды.",
         problemsATask4Q1: "Как Узбекистан может выращивать хлопок с меньшим расходом воды? Следует ли фермерам переключаться на другие культуры?",
+        discussAiBtn: "Обсудить с ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChat: "Закрыть чат",
     },
     en: {
         pageTitle: "Ethical Dilemmas & Problem Solving",
@@ -127,31 +132,22 @@ const translations = {
         problemsATask4Title: "2. Sustainable Agriculture & Cotton Production",
         problemsATask4Desc: "Uzbekistan exports a lot of cotton, but it uses a lot of water.",
         problemsATask4Q1: "How can Uzbekistan grow cotton with less water? Should farmers switch to different crops?",
+        discussAiBtn: "Discuss with AI",
+        aiThinking: "AI Thinking...",
+        closeAiChat: "Close AI Chat",
     }
 };
 
-// Reusable component for open-ended question cards.
-const TaskCard = ({ title, description, questions }) => (
-    <div className="task-card bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-        <h4 className="text-lg font-semibold mb-2 text-gray-800">{title}</h4>
-        <p className="text-sm text-gray-600 mb-4">{description}</p>
-        <div className="space-y-4">
-            {questions.map((q, index) => (
-                <div key={index}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{q.label}</label>
-                    <textarea 
-                        rows={q.rows || 2} 
-                        className="w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                        placeholder={q.placeholder}
-                    />
-                </div>
-            ))}
-        </div>
-    </div>
-);
+// Removed TaskCard component definition as it will be replaced by renderTask logic
 
 export default function EthicalDilemmasModule() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
+    const [answers, setAnswers] = useState({});
+    const [showAiButtons, setShowAiButtons] = useState({});
+    const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentErrors, setCurrentErrors] = useState({});
 
     useEffect(() => {
         document.title = translations[lang].pageTitle;
@@ -166,37 +162,210 @@ export default function EthicalDilemmasModule() {
 
     const t = translations[lang];
 
+    const handleAnswerChange = useCallback((taskKey, questionIdentifier, value) => {
+        setAnswers(prev => ({
+            ...prev,
+            [taskKey]: {
+                ...prev[taskKey],
+                [questionIdentifier]: value
+            }
+        }));
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+    }, []);
+
+    const handleSubmit = useCallback((taskKey) => {
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+    }, []);
+
+    // Task Data (with taskKey and question keys added)
     const beginnerEthicsTasks = [
-        { title: t.ethicsBTask1Title, description: t.ethicsBTask1Desc, questions: [{ label: t.ethicsBTask1Q1, placeholder: t.placeholderYourThoughts }, { label: t.ethicsBTask1Q2, placeholder: t.placeholderYourThoughts }] },
-        { title: t.ethicsBTask2Title, description: t.ethicsBTask2Desc, questions: [{ label: t.ethicsBTask2Q1, placeholder: t.placeholderYourThoughts }, { label: t.ethicsBTask2Q2, placeholder: t.placeholderYourThoughts }] },
-        { title: t.ethicsBTask3Title, description: t.ethicsBTask3Desc, questions: [{ label: t.ethicsBTask3Q1, placeholder: t.placeholderYourReasoning }] },
+        { taskKey: 'ethicsBTask1', titleKey: 'ethicsBTask1Title', descriptionKey: 'ethicsBTask1Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsBTask1Q1', placeholderKey: 'placeholderYourThoughts' },
+            { key: 'q2', labelKey: 'ethicsBTask1Q2', placeholderKey: 'placeholderYourThoughts' }
+        ]},
+        { taskKey: 'ethicsBTask2', titleKey: 'ethicsBTask2Title', descriptionKey: 'ethicsBTask2Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsBTask2Q1', placeholderKey: 'placeholderYourThoughts' },
+            { key: 'q2', labelKey: 'ethicsBTask2Q2', placeholderKey: 'placeholderYourThoughts' }
+        ]},
+        { taskKey: 'ethicsBTask3', titleKey: 'ethicsBTask3Title', descriptionKey: 'ethicsBTask3Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsBTask3Q1', placeholderKey: 'placeholderYourReasoning' }
+        ]},
     ];
     
     const intermediateEthicsTasks = [
-        { title: t.ethicsITask1Title, description: t.ethicsITask1Desc, questions: [{ label: t.ethicsITask1Q1, rows: 3, placeholder: t.placeholderYourArguments }] },
-        { title: t.ethicsITask2Title, description: t.ethicsITask2Desc, questions: [{ label: t.ethicsITask2Q1, rows: 3, placeholder: t.placeholderYourProposals }] },
+        { taskKey: 'ethicsITask1', titleKey: 'ethicsITask1Title', descriptionKey: 'ethicsITask1Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsITask1Q1', rows: 3, placeholderKey: 'placeholderYourArguments' }
+        ]},
+        { taskKey: 'ethicsITask2', titleKey: 'ethicsITask2Title', descriptionKey: 'ethicsITask2Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsITask2Q1', rows: 3, placeholderKey: 'placeholderYourProposals' }
+        ]},
     ];
 
     const advancedEthicsTasks = [
-        { title: t.ethicsATask1Title, description: t.ethicsATask1Desc, questions: [{ label: t.ethicsATask1Q1, rows: 4, placeholder: t.placeholderYourDetailedAnalysis }] },
-        { title: t.ethicsATask2Title, description: t.ethicsATask2Desc, questions: [{ label: t.ethicsATask2Q1, rows: 4, placeholder: t.placeholderYourDetailedAnalysis }] },
+        { taskKey: 'ethicsATask1', titleKey: 'ethicsATask1Title', descriptionKey: 'ethicsATask1Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsATask1Q1', rows: 4, placeholderKey: 'placeholderYourDetailedAnalysis' }
+        ]},
+        { taskKey: 'ethicsATask2', titleKey: 'ethicsATask2Title', descriptionKey: 'ethicsATask2Desc', questions: [
+            { key: 'q1', labelKey: 'ethicsATask2Q1', rows: 4, placeholderKey: 'placeholderYourDetailedAnalysis' }
+        ]},
     ];
 
     const beginnerProblemsTasks = [
-        { title: t.problemsBTask1Title, description: t.problemsBTask1Desc, questions: [{ label: t.problemsBTask1Q1, rows: 3, placeholder: t.placeholderYourSuggestions }] },
-        { title: t.problemsBTask3Title, description: t.problemsBTask3Desc, questions: [{ label: t.problemsBTask3Q1, rows: 3, placeholder: t.placeholderYourIdeas }] },
+        { taskKey: 'problemsBTask1', titleKey: 'problemsBTask1Title', descriptionKey: 'problemsBTask1Desc', questions: [
+            { key: 'q1', labelKey: 'problemsBTask1Q1', rows: 3, placeholderKey: 'placeholderYourSuggestions' }
+        ]},
+        { taskKey: 'problemsBTask3', titleKey: 'problemsBTask3Title', descriptionKey: 'problemsBTask3Desc', questions: [ // Assuming BTask3 based on original data
+            { key: 'q1', labelKey: 'problemsBTask3Q1', rows: 3, placeholderKey: 'placeholderYourIdeas' }
+        ]},
     ];
 
     const intermediateProblemsTasks = [
-        { title: t.problemsITask1Title, description: t.problemsITask1Desc, questions: [{ label: t.problemsITask1Q1, rows: 3, placeholder: t.placeholderYourSolutions }] },
-        { title: t.problemsITask3Title, description: t.problemsITask3Desc, questions: [{ label: t.problemsITask3Q1, rows: 3, placeholder: t.placeholderYourSolutions }] },
+        { taskKey: 'problemsITask1', titleKey: 'problemsITask1Title', descriptionKey: 'problemsITask1Desc', questions: [
+            { key: 'q1', labelKey: 'problemsITask1Q1', rows: 3, placeholderKey: 'placeholderYourSolutions' }
+        ]},
+        { taskKey: 'problemsITask3', titleKey: 'problemsITask3Title', descriptionKey: 'problemsITask3Desc', questions: [ // Assuming ITask3
+            { key: 'q1', labelKey: 'problemsITask3Q1', rows: 3, placeholderKey: 'placeholderYourSolutions' }
+        ]},
     ];
     
     const advancedProblemsTasks = [
-        { title: t.problemsATask1Title, description: t.problemsATask1Desc, questions: [{ label: t.problemsATask1Q1, rows: 4, placeholder: t.placeholderYourStrategies }] },
-        { title: t.problemsATask4Title, description: t.problemsATask4Desc, questions: [{ label: t.problemsATask4Q1, rows: 4, placeholder: t.placeholderYourStrategies }] },
+        { taskKey: 'problemsATask1', titleKey: 'problemsATask1Title', descriptionKey: 'problemsATask1Desc', questions: [
+            { key: 'q1', labelKey: 'problemsATask1Q1', rows: 4, placeholderKey: 'placeholderYourStrategies' }
+        ]},
+        { taskKey: 'problemsATask4', titleKey: 'problemsATask4Title', descriptionKey: 'problemsATask4Desc', questions: [ // Assuming ATask4
+            { key: 'q1', labelKey: 'problemsATask4Q1', rows: 4, placeholderKey: 'placeholderYourStrategies' }
+        ]},
     ];
 
+    const getTaskDetailsForAI_EthicalDilemmas = useCallback((taskKey) => {
+        const taskDataArrays = [
+            ...beginnerEthicsTasks, ...intermediateEthicsTasks, ...advancedEthicsTasks,
+            ...beginnerProblemsTasks, ...intermediateProblemsTasks, ...advancedProblemsTasks
+        ];
+        const currentTaskData = taskDataArrays.find(task => task.taskKey === taskKey);
+        if (!currentTaskData) return { block_context: 'Unknown task', user_answers: ['No data for this task.'] };
+
+        let taskBlockContext = `Task: ${t[currentTaskData.titleKey]}
+Description: ${t[currentTaskData.descriptionKey].replace(/<[^>]*>?/gm, '')}`;
+        let userAnswersFormatted = [];
+
+        if (currentTaskData.questions) {
+            currentTaskData.questions.forEach((q, index) => {
+                const questionKey = q.key || `q${index}`;
+                const answer = answers[taskKey]?.[questionKey] || 'No answer provided.';
+                userAnswersFormatted.push(`Question: ${t[q.labelKey] || q.labelKey}
+Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
+            });
+        }
+
+        if (userAnswersFormatted.length === 0) {
+            userAnswersFormatted.push("User has not provided any specific inputs for this task yet.");
+        }
+
+        return {
+            block_context: taskBlockContext,
+            user_answers: [userAnswersFormatted.join('\n\n')],
+            interaction_type: 'discuss_open_ended'
+        };
+    }, [answers, t, beginnerEthicsTasks, intermediateEthicsTasks, advancedEthicsTasks, beginnerProblemsTasks, intermediateProblemsTasks, advancedProblemsTasks]);
+
+    const handleAskAI_EthicalDilemmas = useCallback(async (taskKey, userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChatTaskKey(taskKey);
+        setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
+        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
+        } else {
+            setChatMessages([thinkingMsg]);
+        }
+
+        try {
+            const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_EthicalDilemmas(taskKey);
+            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery);
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: response.explanation }
+            ]);
+        } catch (error) {
+            console.error(`Error fetching AI discussion for ${taskKey}:`, error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
+                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentErrors(prev => ({ ...prev, [taskKey]: errorMsg }));
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_EthicalDilemmas, t]);
+
+
+    const renderTask = (task) => (
+        <div key={task.taskKey} className="task-card bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <h4 className="text-lg font-semibold mb-2 text-gray-800">{t[task.titleKey]}</h4>
+            <p className="text-sm text-gray-600 mb-4" dangerouslySetInnerHTML={{ __html: t[task.descriptionKey] }}></p>
+            <div className="space-y-4">
+                {task.questions.map((q, qIndex) => {
+                    const questionKey = q.key || `q${qIndex}`;
+                    return (
+                        <div key={questionKey}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t[q.labelKey] || q.labelKey}</label> {/* Use q.labelKey */}
+                            <textarea
+                                rows={q.rows || 3}
+                                className="w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder={t[q.placeholderKey] || q.placeholderKey} // Use q.placeholderKey
+                                value={answers[task.taskKey]?.[questionKey] || ''}
+                                onChange={(e) => handleAnswerChange(task.taskKey, questionKey, e.target.value)}
+                                disabled={isAiLoading}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+            <div>
+                <button
+                    onClick={() => handleSubmit(task.taskKey)}
+                    disabled={isAiLoading}
+                    className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300"
+                >
+                    {t.submitBtn || "Submit Answers"}
+                </button>
+            </div>
+            {showAiButtons[task.taskKey] && !currentErrors[task.taskKey] && (
+                <div>
+                    <button
+                        onClick={() => handleAskAI_EthicalDilemmas(task.taskKey)}
+                        disabled={isAiLoading && activeChatTaskKey === task.taskKey}
+                        className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                    >
+                        {t.discussAiBtn || "Discuss with AI"}
+                    </button>
+                </div>
+            )}
+            {currentErrors[task.taskKey] && <p className="text-red-500 mt-2 text-sm">{currentErrors[task.taskKey]}</p>}
+            {activeChatTaskKey === task.taskKey && (
+                <div className="mt-4">
+                    <AiChatWindow
+                        messages={chatMessages}
+                        isLoading={isAiLoading}
+                        onSendMessage={(message) => handleAskAI_EthicalDilemmas(task.taskKey, message)}
+                    />
+                    <button
+                        onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); setCurrentErrors(prev => ({...prev, [task.taskKey]: null})); }}
+                        className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                        {t.closeAiChat || "Close AI Chat"}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className="bg-gray-100 text-gray-800 font-sans">
@@ -210,25 +379,25 @@ export default function EthicalDilemmasModule() {
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-indigo-700 mb-6">{t.beginnerLevel}</h3>
                         <div className="space-y-8">
-                            {beginnerEthicsTasks.map((task, i) => <TaskCard key={`b-eth-${i}`} {...task} />)}
+                            {beginnerEthicsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
 
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-green-700 mb-6">{t.intermediateLevel}</h3>
                         <div className="space-y-8">
-                           {intermediateEthicsTasks.map((task, i) => <TaskCard key={`i-eth-${i}`} {...task} />)}
+                           {intermediateEthicsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
 
                     <div className="level-section bg-white p-6 rounded-lg shadow">
                         <h3 className="text-xl font-bold text-red-700 mb-6">{t.advancedLevel}</h3>
                         <div className="space-y-8">
-                            {advancedEthicsTasks.map((task, i) => <TaskCard key={`a-eth-${i}`} {...task} />)}
+                            {advancedEthicsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
                 </section>
 
@@ -239,25 +408,25 @@ export default function EthicalDilemmasModule() {
                      <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-indigo-700 mb-6">{t.problemSolvingBLevel}</h3>
                         <div className="space-y-8">
-                            {beginnerProblemsTasks.map((task, i) => <TaskCard key={`b-prob-${i}`} {...task} />)}
+                            {beginnerProblemsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
 
                     <div className="level-section bg-white p-6 rounded-lg shadow mb-12">
                         <h3 className="text-xl font-bold text-green-700 mb-6">{t.problemSolvingILevel}</h3>
                         <div className="space-y-8">
-                           {intermediateProblemsTasks.map((task, i) => <TaskCard key={`i-prob-${i}`} {...task} />)}
+                           {intermediateProblemsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
 
                     <div className="level-section bg-white p-6 rounded-lg shadow">
                         <h3 className="text-xl font-bold text-red-700 mb-6">{t.problemSolvingALevel}</h3>
                         <div className="space-y-8">
-                            {advancedProblemsTasks.map((task, i) => <TaskCard key={`a-prob-${i}`} {...task} />)}
+                            {advancedProblemsTasks.map(task => renderTask(task))}
                         </div>
-                        <button className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300">{t.submitBtn}</button>
+                        {/* Removed per-level submit button */}
                     </div>
                 </section>
             </main>
