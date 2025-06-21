@@ -458,6 +458,22 @@ class GenericAiInteractionView(APIView):
                     f"User's input related to this task: {user_inputs_str}",
                     "Please provide general assistance, clarification, or feedback related to facts, opinions, or critical thinking for this task."
                 ])
+        elif module_id.startswith('game-'):
+            prompt_parts.append(f"You are assisting with the '{module_id}' game.")
+            if user_query:
+                prompt_parts.extend([
+                    "The user has previously played this game and seen a summary of their performance.",
+                    f"For reference, the game's general context/rules were: {block_context}",
+                    f"And a summary of their performance/choices was: {user_inputs_str}",
+                    f"The user now has the following specific question about the game or their performance: '{user_query}'",
+                    "Please directly answer this question. You can refer to the game context or their performance summary if it helps clarify your answer to their specific question, but your primary goal is to address their latest query. Do not re-summarize their overall game performance unless it's directly relevant to answering their question."
+                ])
+            else: # Initial interaction for the game
+                prompt_parts.extend([
+                    f"The user has just completed a session of this game. The game's general context/rules were: {block_context}",
+                    f"Here is a summary of their performance/choices: {user_inputs_str}",
+                    "Please provide a brief, helpful commentary on their performance and the game items. You can highlight areas they did well or areas for improvement. After your commentary, invite them to ask specific questions if they want to understand any part better, discuss particular items, or get more examples."
+                ])
         # Placeholder for other module_ids (e.g., 'proverbs', 'debating')
         # elif module_id == 'debating':
         #     prompt_parts.append("You are currently assisting with the 'Debating Social Issues' module.")
