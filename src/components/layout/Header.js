@@ -15,6 +15,7 @@ const Header = () => {
       navAllModules: "Все модули",
       navGamesHub: "Центр Игр",
       navAccount: "Личный кабинет",
+      navLibrary: "Библиотека",
       navLogin: "Войти",
       navRegister: "Регистрация",
       navLogout: "Выйти",
@@ -24,6 +25,7 @@ const Header = () => {
       navAllModules: "All Modules",
       navGamesHub: "Games Hub",
       navAccount: "Personal Account",
+      navLibrary: "Library",
       navLogin: "Login",
       navRegister: "Register",
       navLogout: "Logout",
@@ -87,7 +89,10 @@ const Header = () => {
           <NavLink to="/games">{t.navGamesHub}</NavLink>
           
           {isAuthenticated && (
-            <NavLink to="/account">{t.navAccount}</NavLink>
+            <>
+              <NavLink to="/account">{t.navAccount}</NavLink>
+              <NavLink to="/library">{t.navLibrary}</NavLink>
+            </>
           )}
 
           <div className="relative ml-4">

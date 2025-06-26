@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import PersonalAccount from './pages/PersonalAccount';
 import ModulesHub from './pages/ModulesHub';
 import GamesHub from './pages/GamesHub';
+import LibraryPage from './pages/LibraryPage'; // Import the new LibraryPage component
 
 // ... (other imports for modules and games remain the same) ...
 import CulturalProverbsModule from './features/modules/CulturalProverbsModule';
@@ -58,6 +59,14 @@ function App() {
               />
               <Route path="/modules" element={<ModulesHub />} />
               <Route path="/games" element={<GamesHub />} />
+              <Route
+                path="/library"
+                element={
+                  <ProtectedRoute>
+                    <LibraryPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Module Pages */}
               <Route path="/modules/cultural-proverbs" element={<CulturalProverbsModule />} />
