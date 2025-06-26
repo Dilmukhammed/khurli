@@ -100,11 +100,14 @@ const LibraryPage = () => {
 
   // Select the correct translation object based on the current language
   const t = translations[language] || translations.en; // Fallback to English
-
+<iframe width="560" height="315" src="https://www.youtube.com/embed/tcbxIoERm6w?si=5sNnnKKF2OhFeLA0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
   // Sample Data (This could come from an API in a real application)
   const sampleVideos = [
-    { id: 'vid1', title: { en: 'Introduction to Critical Thinking', ru: 'Введение в критическое мышление' }, youtubeId: '6OLPL5p0fMg' },
-    { id: 'vid2', title: { en: '5 Tips to Improve Your Critical Thinking', ru: '5 советов, как улучшить критическое мышление' }, youtubeId: 'J0yEAE5owWw' },
+    { id: 'vid1', title: { en: 'Casually Explained: Critical Thinking', ru: 'Критическое мышление: Объяснение простыми словами' }, youtubeId: 'qMrnVkDH2Ak' },
+    { id: 'vid2', title: { en: 'Critical thinking at the heart of Gen AI literacy', ru: 'Критическое мышление как ключевой навык для освоения генеративного ИИ' }, youtubeId: 'yr0-RLGZshg' },
+    { id: 'vid3', title: { en: 'How to Improve Your Critical Thinking Skills', ru: 'Как улучшить свои навыки критического мышления' }, youtubeId: 'JOFrjc6u47U' },
+    { id: 'vid4', title: { en: 'Five simple strategies to sharpen your critical thinking | BBC Ideas', ru: 'Пять простых стратегий для развития критического мышления | BBC Ideas' }, youtubeId: 'NHjgKe7JMNE' },
+    { id: 'vid5', title: { en: 'A neuroscientist’s guide to reclaiming your brain | Nicole Vignola', ru: 'Руководство нейробиолога: Как вернуть контроль над своим мозгом | Николь Виньола' }, youtubeId: 'tcbxIoERm6w' },
   ];
 
   const sampleBooks = [
