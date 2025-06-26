@@ -29,11 +29,84 @@ const LibraryPage = () => {
   // Select the correct translation based on the current language
   const t = translations[language] || translations.en; // Fallback to English
 
-  const Section = ({ title, placeholder }) => (
-    <section className="mb-12 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold text-gray-700 mb-4">{title}</h2>
-      <p className="text-gray-600">{placeholder}</p>
-      {/* Future content for this section will go here */}
+  // Sample Data
+  const sampleVideos = [
+    { id: 'vid1', title: { en: 'Introduction to Critical Thinking', ru: 'Введение в критическое мышление' }, youtubeId: 'dQw4w9WgXcQ' },
+    { id: 'vid2', title: { en: 'Understanding Media Bias', ru: 'Понимание предвзятости в СМИ' }, youtubeId: 'oHg5SJYRHA0' },
+  ];
+
+  const sampleBooks = [
+    { id: 'book1', title: { en: 'The Art of Thinking Clearly', ru: 'Искусство ясно мыслить' }, pdfUrl: '#' },
+    { id: 'book2', title: { en: 'Thinking, Fast and Slow', ru: 'Думай медленно... решай быстро' }, pdfUrl: '#' },
+  ];
+
+  const sampleArticles = [
+    { id: 'art1', title: { en: 'How to Spot Fake News', ru: 'Как распознать фейковые новости' }, pdfUrl: '#' },
+    { id: 'art2', title: { en: 'The Impact of Social Media on Information', ru: 'Влияние социальных сетей на информацию' }, pdfUrl: '#' },
+  ];
+
+
+  const Section = ({ title, items, itemType, placeholder }) => (
+    <section className="mb-12">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-300">{title}</h2>
+      {items && items.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map(item => (
+            <div key={item.id} className="bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-indigo-700 mb-3 min-h-[3em]">{item.title[language] || item.title['en']}</h3>
+                {itemType === 'video' && item.youtubeId && (
+                  <div className="aspect-w-16 aspect-h-9 rounded overflow-hidden">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${item.youtubeId}`}
+                      title={item.title[language] || item.title['en']}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    ></iframe>
+                  </div>
+                )}
+              </div>
+              {(itemType === 'book' || itemType === 'article') && item.pdfUrl && (
+                <a
+                  href={item.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-4 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium py-2 px-4 rounded-md text-center transition-colors"
+                >
+                  {language === 'ru' ? 'Открыть PDF' : 'Open PDF'}
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${item.youtubeId}`}
+                    title={item.title[language] || item.title['en']}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  ></iframe>
+                </div>
+              )}
+              {(itemType === 'book' || itemType === 'article') && item.pdfUrl && (
+                <a
+                  href={item.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-sm text-indigo-500 hover:text-indigo-700 underline"
+                >
+                  {language === 'ru' ? 'Открыть PDF' : 'Open PDF'}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-600">{placeholder}</p>
+      )}
     </section>
   );
 
@@ -44,9 +117,24 @@ const LibraryPage = () => {
       </header>
 
       <div className="space-y-10">
-        <Section title={t.videosTitle} placeholder={t.videosPlaceholder} />
-        <Section title={t.booksTitle} placeholder={t.booksPlaceholder} />
-        <Section title={t.articlesTitle} placeholder={t.articlesPlaceholder} />
+        <Section
+          title={t.videosTitle}
+          items={sampleVideos}
+          itemType="video"
+          placeholder={t.videosPlaceholder}
+        />
+        <Section
+          title={t.booksTitle}
+          items={sampleBooks}
+          itemType="book"
+          placeholder={t.booksPlaceholder}
+        />
+        <Section
+          title={t.articlesTitle}
+          items={sampleArticles}
+          itemType="article"
+          placeholder={t.articlesPlaceholder}
+        />
       </div>
     </div>
   );
