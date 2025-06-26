@@ -526,36 +526,38 @@ const DebatingModule = () => {
         const thinkingMsg = { sender: 'ai', text: 'Thinking...' };
 
         if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else {
-            setChatMessages([thinkingMsg]);
+            setChatMessages(prev => [
+                ...prev,
+                { "role" : 'user', "content": userQuery },
+            ]);
         }
 
         try {
-            const { block_context, user_answers } = getTaskDetailsForAI_Debate(taskKey);
+            const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_Debate(taskKey);
 
             if (!block_context) {
                  console.error("Could not get task details for AI for taskKey:", taskKey);
                  setChatMessages(prev => [
-                    ...prev.filter(msg => msg.text !== 'Thinking...'),
-                    { sender: 'ai', text: "Sorry, I couldn't retrieve the task details to ask the AI." }
-                ]);
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                {"role": 'assistant', "content": "Sorry, I couldn't get the details for this task."}
+            ]);
                 setCurrentErrors(prev => ({...prev, [taskKey]: "Could not retrieve task details."}));
                 setIsAiLoading(false);
                 return;
             }
-
-            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery);
+            console.log("debating module block context", block_context)
+            console.log("user answers",user_answers)
+            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery, chatMessages);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== 'Thinking...'),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error(`Error fetching AI debate discussion for ${taskKey}:`, error);
             const errorMsg = error.message || 'Failed to get AI response.';
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== 'Thinking...'),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${error.message}` }
             ]);
             setCurrentErrors(prev => ({...prev, [taskKey]: errorMsg }));
         } finally {
@@ -612,7 +614,7 @@ const DebatingModule = () => {
                     {showAiButtons['bTask1'] && !currentErrors['bTask1'] && (
                         <div>
                             <button
-                                onClick={() => handleAskAI_Debate('bTask1')}
+                                onClick={() => {handleAskAI_Debate('bTask1'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'bTask1'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
@@ -658,7 +660,7 @@ const DebatingModule = () => {
                     {showAiButtons['bTask3'] && !currentErrors['bTask3'] && (
                         <div> {/* Wrapper for Discuss with AI button */}
                             <button
-                                onClick={() => handleAskAI_Debate('bTask3')}
+                                onClick={() => {handleAskAI_Debate('bTask3'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'bTask3'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
@@ -710,7 +712,7 @@ const DebatingModule = () => {
                     {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                         <div>
                             <button
-                                onClick={() => handleAskAI_Debate('iTask2')}
+                                onClick={() => {handleAskAI_Debate('iTask2'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
@@ -757,7 +759,7 @@ const DebatingModule = () => {
                     {showAiButtons['iTask3'] && !currentErrors['iTask3'] && (
                         <div>
                             <button
-                                onClick={() => handleAskAI_Debate('iTask3')}
+                                onClick={() => {handleAskAI_Debate('iTask3'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'iTask3'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
@@ -811,7 +813,7 @@ const DebatingModule = () => {
                     {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
                         <div>
                             <button
-                                onClick={() => handleAskAI_Debate('aTask2')}
+                                onClick={() => {handleAskAI_Debate('aTask2'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'aTask2'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >
@@ -856,7 +858,7 @@ const DebatingModule = () => {
                     {showAiButtons['aTask3'] && !currentErrors['aTask3'] && (
                         <div>
                             <button
-                                onClick={() => handleAskAI_Debate('aTask3')}
+                                onClick={() => {handleAskAI_Debate('aTask3'); setChatMessages([])}}
                                 disabled={isAiLoading && activeChatTaskKey === 'aTask3'}
                                 className="mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                             >

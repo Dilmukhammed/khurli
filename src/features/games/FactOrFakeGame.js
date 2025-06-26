@@ -154,21 +154,22 @@ export default function FactOrFakeGame() {
     }, [lang, userAnswers, results]);
 
     const handleAskAI_FactOrFake = useCallback(async (userQuery = '') => {
+        console.log("fact or fake line 157", userQuery)
         if (isAiLoading) return;
         setIsAiLoading(true);
         setActiveChat(true);
         setCurrentError('');
         const t = translations[lang];
-        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
 
-        if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else {
-            setChatMessages([{ sender: 'ai', text: `You can ask about why certain headlines are facts or fakes, or discuss your results.` }, thinkingMsg]);
-        }
+
 
         try {
             const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_FactOrFake();
+            if (userQuery) {
+                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+            }
+            console.log("Fact or fake js line 172 ", chatMessages)
 
             const response = await moduleService.getGenericAiInteraction({
                 module_id: 'game-fact-or-fake',
@@ -176,19 +177,21 @@ export default function FactOrFakeGame() {
                 interaction_type,
                 block_context,
                 user_inputs,
-                user_query
+                userQuery,
+                chatMessages,
             });
 
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": response.explanation }
             ]);
+            console.log("fact or fake line 187", chatMessages)
         } catch (error) {
             console.error('Error fetching AI for FactOrFakeGame:', error);
             const errorMsg = error.message || 'Failed to get AI response.';
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
             ]);
             setCurrentError(errorMsg);
         } finally {

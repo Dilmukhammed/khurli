@@ -231,7 +231,7 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
             {showAskAiButton && (
                 <div>
                     <button
-                        onClick={() => onAskAi(taskKey, 'explain_fact_opinion_choice', {
+                        onClick={() => onAskAi(taskKey, "" , {
                             questionsData: questions,
                         userAnswers: answers,
                         optionsData: options
@@ -357,11 +357,14 @@ export default function FactOpinionModule() {
             block_context: `Context for ${taskKey}`,       // Placeholder
             user_inputs: [],
             correct_answers_data: [],
-            user_query: '' // Will be filled by handleAskAiFactOpinion if it's a direct query
+            userQuery: '', // Will be filled by handleAskAiFactOpinion if it's a direct query
+            chatMessages: []
         };
 
         const taskSpecificMainAnswers = answers[taskKey] || {};
 
+        console.log(taskKey)
+        console.log(additionalData)
         if (taskKey === 'bTask1' || taskKey === 'bTask3' || taskKey === 'aTask1') {
             if (additionalData && additionalData.questionsData) {
                 const { questionsData, userAnswers: childAnswers, optionsData } = additionalData;
@@ -499,7 +502,7 @@ export default function FactOpinionModule() {
                 const userExplanation = taskSpecificAnswers[`${stmt.idPrefix}_exp`] || 'No explanation.';
 
                 contextParts.push(`Statement to Fact-Check: "${originalStatementText}"`);
-                userInputsFormatted.push(`For statement "\${originalStatementText.substring(0,30)}...": Your assessment was '\${userChoice}'. Your explanation/correction: "\${userExplanation}"\`);
+                userInputsFormatted.push(`For statement "\${originalStatementText.substring(0,30)}...": Your assessment was '\${userChoice}'. Your explanation/correction: "\${userExplanation}"\ `);
             });
 
             requestData.block_context = contextParts.join('\n\n');
@@ -532,24 +535,17 @@ export default function FactOpinionModule() {
         setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
 
         const thinkingText = t.aiThinking || 'AI Thinking...';
-        const askInstructionText = t.askAiInstruction || 'What would you like to ask about this task?';
         const aiErrorText = t.aiError || 'Failed to get AI response.';
-
-        const thinkingMsg = { sender: 'ai', text: thinkingText };
+        console.log(userQuery)
+        console.log(taskKey)
 
         let dataForAiProcessing = initialDataPayload;
-        if (userQuery && !initialDataPayload) {
+        if (userQuery) {
             // This is a follow-up query from the chat window, use existing context
-            dataForAiProcessing = currentTaskAiContext;
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else if (initialDataPayload) {
-            // This is an initial "Ask AI" click, set new context
-            setCurrentTaskAiContext(initialDataPayload);
-            setChatMessages([{ sender: 'ai', text: askInstructionText }, thinkingMsg]);
-        } else {
-            // Fallback if neither, though typically one should be present
-            setCurrentTaskAiContext(null);
-            setChatMessages([thinkingMsg]);
+            setChatMessages(prev => [
+                ...prev,
+                { "role" : 'user', "content": userQuery },
+            ]);
         }
 
         try {
@@ -558,23 +554,24 @@ export default function FactOpinionModule() {
 
             // If it's a user query from chat, ensure it's part of the requestDetails
             if (userQuery) {
-                requestDetails.user_query = userQuery;
+                requestDetails.userQuery = userQuery;
+                requestDetails.chatMessages = chatMessages
             }
-
+            console.log(requestDetails)
             // NEW CALL to the generic service
             const response = await moduleService.getGenericAiInteraction(requestDetails);
 
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== thinkingText),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error)
  {
             console.error(`Error fetching AI Fact/Opinion for ${taskKey} via generic service:`, error);
             const errorMsg = error.message || aiErrorText;
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== thinkingText),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                {"role": 'assistant', "content": "Sorry, I couldn't get the details for this task."}
             ]);
             setCurrentErrors(prev => ({ ...prev, [taskKey]: errorMsg }));
         } finally {
@@ -659,7 +656,7 @@ export default function FactOpinionModule() {
                         {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
                             <div>
                                 <button
-                                    onClick={() => handleAskAiFactOpinion('bTask2')}
+                                    onClick={() => {handleAskAiFactOpinion('bTask2');setChatMessages([])}}
                                     disabled={isAiLoading && activeChatTaskKey === 'bTask2'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
@@ -753,7 +750,7 @@ export default function FactOpinionModule() {
                         {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
                             <div>
                                 <button
-                                    onClick={() => handleAskAiFactOpinion('iTask1')}
+                                    onClick={() => {handleAskAiFactOpinion('iTask1'); setChatMessages([])}}
                                     disabled={isAiLoading && activeChatTaskKey === 'iTask1'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
@@ -810,7 +807,7 @@ export default function FactOpinionModule() {
                         {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                             <div>
                                 <button
-                                    onClick={() => handleAskAiFactOpinion('iTask2')}
+                                    onClick={() => {handleAskAiFactOpinion('iTask2'); setChatMessages([])}}
                                     disabled={isAiLoading && activeChatTaskKey === 'iTask2'}
                                     className="mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 >
@@ -919,7 +916,7 @@ export default function FactOpinionModule() {
                         </div>
                         <div>
                             <button
-                                onClick={() => handleSubmitFactOpinion('aTask2')}
+                                onClick={() => {handleSubmitFactOpinion('aTask2'); setChatMessages([])}}
                                 disabled={isAiLoading}
                                 className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                             >

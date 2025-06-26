@@ -71,6 +71,9 @@ const translations = {
         intermediateTask3Eng3: "Знание ценнее золота",
         intermediateTask4Title: "4. Дебаты: Согласны или не согласны?",
         intermediateTask4Desc: "Прочтите пословицы. Вы согласны или не согласны? Объясните почему (минимум два предложения).",
+        intermediateTask4Prov1: "1. \"Sabrlik – oltin.\" (Patience is gold.)",
+        intermediateTask4Prov2: "2. \"Tez harakat qilmagan, peshonasini uradi.\" (He who hesitates, regrets.)",
+        intermediateTask4Prov3: "3. \"Yomg‘irdan qochib, do‘lga tutilma.\" (Out of the frying pan, into the fire.)",
         agree: "Согласен",
         disagree: "Не согласен",
         intermediateTask5Title: "5. Применение в реальной жизни – Написание истории",
@@ -200,6 +203,9 @@ const translations = {
         intermediateTask3Eng3: "Knowledge is more valuable than gold",
         intermediateTask4Title: "4. Debate: Do You Agree or Disagree?",
         intermediateTask4Desc: "Read the proverbs. Do you agree or disagree? Explain why (at least two sentences).",
+        intermediateTask4Prov1: "1. \"Sabrlik – oltin.\" (Patience is gold.)",
+        intermediateTask4Prov2: "2. \"Tez harakat qilmagan, peshonasini uradi.\" (He who hesitates, regrets.)",
+        intermediateTask4Prov3: "3. \"Yomg‘irdan qochib, do‘lga tutilma.\" (Out of the frying pan, into the fire.)",
         agree: "Agree",
         disagree: "Disagree",
         intermediateTask5Title: "5. Real-Life Application – Story Writing",
@@ -392,17 +398,7 @@ const CulturalProverbsModule = () => {
                  '"Patience is a ___." (virtue, mistake, problem)',
              ];
              taskBlockContext += "\n\nFill-in Proverbs (full list):\n" + fillInProverbs.join("\n");
-        } else if (taskKey === 'beginnerTask3') { // Corrected this line from the original prompt, was intermediateTask1
-            interaction_type_to_send = 'explain_mistakes';
-            taskCorrectAnswers = { q1: 'indeed', q2: 'gain', q3: 'fire', q4: 'nest', q5: 'virtue' };
-             const fillInProverbs = [
-                 '"A friend in need is a friend ___." (indeed, always, never)',
-                 '"No pain, no ___." (gain, rain, train)',
-                 '"Out of the frying pan, into the ___." (fire, ice, water)',
-                 '"Little by little, the bird builds its ___." (nest, house, tree)',
-                 '"Patience is a ___." (virtue, mistake, problem)',
-             ];
-             taskBlockContext += "\n\nFill-in Proverbs (full list):\n" + fillInProverbs.join("\n");
+
         } else if (taskKey === 'intermediateTask1') {
             interaction_type_to_send = 'explain_mistakes';
             taskCorrectAnswers = { q1: 'd', q2: 'a', q3: 'c', q4: 'e', q5: 'b' };
@@ -419,7 +415,7 @@ const CulturalProverbsModule = () => {
             interaction_type_to_send = 'discuss_open_ended';
             taskCorrectAnswers = {}; // No specific "correct" answers for open discussion
             // Context includes title, description, and the proverbs to be discussed
-            taskBlockContext = `${t('intermediateTask2Title')}\n${t('intermediateTask2Desc')}\n\nProverbs for discussion:\n1. ${t('intermediateTask2.q1.proverb') || "Ko‘p bilan maslahat qil, lekin o‘zing qaror qil."}\n2. ${t('intermediateTask2.q2.proverb') || "Yaxshi so‘z – jon ozig‘i."}\n3. ${t('intermediateTask2.q3.proverb') || "Daryodan o‘tib, eshakni urma."}`;
+            taskBlockContext = `${t('intermediateTask2Title')}\n${t('intermediateTask2Desc')}\n\nProverbs for discussion:\n1. Ko‘p bilan maslahat qil, lekin o‘zing qaror qil \n2. "Yaxshi so‘z – jon ozig‘i."}\n3. "Daryodan o‘tib, eshakni urma."}`;
 
             const userResponses = [
                 `Response to proverb 1: ${answers.intermediateTask2?.i2_q1_response || '(Not answered)'}`,
@@ -432,6 +428,29 @@ const CulturalProverbsModule = () => {
                 block_context: taskBlockContext,
                 user_answers: [combinedUserAnswers], // Send as a list with one item
                 correct_answers: [], // Empty list for discussions
+                interaction_type: interaction_type_to_send,
+            };
+        } else if (taskKey === 'intermediateTask4') {
+            interaction_type_to_send = 'discuss_open_ended';
+            taskBlockContext = `${t('intermediateTask4Title')}\n${t('intermediateTask4Desc')}\n\nProverbs:\n- ${t('intermediateTask4Prov1')}\n- ${t('intermediateTask4Prov2')}\n- ${t('intermediateTask4Prov3')}`;
+
+            const agree_disagree = [
+                `1 Proverb: ${answers.intermediateTask4?.agree_disagree_q1 || '(Not selected)'}`,
+                `2 Proverb: ${answers.intermediateTask4?.agree_disagree_q2 || '(Not selected)'}`,
+                `3 Proverb: ${answers.intermediateTask4?.agree_disagree_q3 || '(Not selected)'}`
+            ];
+            const essayText = [ 
+                `User explanation 1 proverb: ${answers.intermediateTask4?.q1 || '(Not written)'}`,
+                `User explanation 2 proverb: ${answers.intermediateTask4?.q2 || '(Not written)'}`,
+                `User explanation 3 proverb: ${answers.intermediateTask4?.q3 || '(Not written)'}`,
+            ]
+            const formattedUserAnswers = agree_disagree.join("\n\n")+ "\n" + essayText.join("\n\n");
+            
+
+            return {
+                block_context: taskBlockContext,
+                user_answers: [formattedUserAnswers],
+                correct_answers: [],
                 interaction_type: interaction_type_to_send,
             };
         } else if (taskKey === 'intermediateTask5') {
@@ -448,6 +467,13 @@ const CulturalProverbsModule = () => {
         } else if (taskKey === 'beginnerTask4') {
             interaction_type_to_send = 'discuss_open_ended';
             taskBlockContext = `${t('beginnerTask4Title')}\n${t('beginnerTask4Desc')}`;
+            const completeSentence = [
+                {sentence: "1. A true friend is someone who ____"},
+                {sentence: "2. If you want to succeed in life, you should _____"},
+                {sentence: "3. When I have a problem, I usually ____"},
+                {sentence: "4. In Uzbekistan, people believe that patience is important because ____"},
+                {sentence: "5. A proverb I like is ____ , because _____"}
+            ]
             const userSentences = [];
             for (let i = 1; i <= 4; i++) { // Loop for s1 to s4
                 const answer = answers.beginnerTask4?.[`s${i}`];
@@ -470,6 +496,8 @@ const CulturalProverbsModule = () => {
                 sentence5 += `, Reason: (Not answered)`;
             }
             userSentences.push(sentence5);
+            taskBlockContext += "\n\nSentences:\n" +
+                completeSentence.map(item => `${item.sentence}`).join("\n");
 
             const formatted_user_answers_string = userSentences.join("\n");
             return {
@@ -700,20 +728,17 @@ const CulturalProverbsModule = () => {
         if (userQuery) {
             setChatMessages(prev => [
                 ...prev,
-                { sender: 'user', text: userQuery },
-                { sender: 'ai', text: 'Thinking...' }
+                { "role" : 'user', "content": userQuery },
             ]);
-        } else {
-            setChatMessages([{ sender: 'ai', text: 'Thinking...' }]);
         }
 
-        const { block_context, user_answers, correct_answers } = getTaskDetailsForAI(taskKey);
+        const { block_context, user_answers, correct_answers, interaction_type } = getTaskDetailsForAI(taskKey);
 
         if (!block_context) {
             console.error("[CulturalProverbsModule] Could not get task details for AI. taskKey:", taskKey);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== 'Thinking...'),
-                {sender: 'ai', text: "Sorry, I couldn't get the details for this task."}
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                {"role": 'assistant', "content": "Sorry, I couldn't get the details for this task."}
             ]);
             setIsAiLoading(false);
             return;
@@ -728,17 +753,19 @@ const CulturalProverbsModule = () => {
                 block_context,
                 user_answers,
                 correct_answers,
-                userQuery // Ensure this is the potentially new userQuery
+                userQuery, // Ensure this is the potentially new userQuery
+                chatMessages,
+                interaction_type
             );
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== 'Thinking...'),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error('[CulturalProverbsModule] Error fetching AI explanation:', error);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== 'Thinking...'),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${error.message}` }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${error.message}` }
             ]);
         } finally {
             setIsAiLoading(false);
@@ -858,7 +885,7 @@ const CulturalProverbsModule = () => {
                                 {results.beginnerTask2 && <div className={`result-message ${results.beginnerTask2.type}`}>{results.beginnerTask2.message}</div>}
                                 {showAiButtons.beginnerTask2 && !isTaskCompleted('beginnerTask2') &&
                                     <button
-                                        onClick={() => handleAskAI('beginnerTask2')}
+                                        onClick={() => {handleAskAI('beginnerTask2'); setChatMessages([])}}
                                         className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'beginnerTask2'}
                                     >
@@ -912,7 +939,7 @@ const CulturalProverbsModule = () => {
                                 {results.beginnerTask3 && <div className={`result-message ${results.beginnerTask3.type}`}>{results.beginnerTask3.message}</div>}
                                 {showAiButtons.beginnerTask3 && !isTaskCompleted('beginnerTask3') &&
                                     <button
-                                        onClick={() => handleAskAI('beginnerTask3')}
+                                        onClick={() => {handleAskAI('beginnerTask3'); setChatMessages([])}}
                                         className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'beginnerTask3'}
                                     >
@@ -1013,7 +1040,7 @@ const CulturalProverbsModule = () => {
                                 {results.beginnerTask4 && <div className={`result-message ${results.beginnerTask4.type}`}>{results.beginnerTask4.message}</div>}
                                 {showAiButtons.beginnerTask4 && !isTaskCompleted('beginnerTask4') &&
                                     <button
-                                        onClick={() => handleAskAI('beginnerTask4')}
+                                        onClick={() => {handleAskAI('beginnerTask4'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'beginnerTask4'}
                                     >
@@ -1095,7 +1122,7 @@ const CulturalProverbsModule = () => {
                                 {results.intermediateTask1 && <div className={`result-message ${results.intermediateTask1.type}`}>{results.intermediateTask1.message}</div>}
                                 {showAiButtons.intermediateTask1 && !isTaskCompleted('intermediateTask1') &&
                                     <button
-                                        onClick={() => handleAskAI('intermediateTask1')}
+                                        onClick={() => {handleAskAI('intermediateTask1'); setChatMessages([])}}
                                         className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'intermediateTask1'}
                                     >
@@ -1125,7 +1152,6 @@ const CulturalProverbsModule = () => {
                                 <p className="mb-3 text-sm text-gray-600">{t('intermediateTask2Desc')}</p>
                                 {[
                                     // Intermediate Task 2: Textareas
-                                    {
                                         // Key for proverb text lookup, adjust if your translation keys are different
                                         // These are illustrative; actual keys might be more complex or direct text.
                                         // For this example, I'll assume the proverb text is part of the item object passed to map.
@@ -1147,13 +1173,12 @@ const CulturalProverbsModule = () => {
                                                     disabled={isTaskCompleted('intermediateTask2') || progressLoading}
                                                 />
                                             </div>
-                                        ))
-                                    }
+                                        ))]}
                                 <button onClick={() => handleSubmit('intermediateTask2')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask2') || progressLoading}>{t('submitBtn')}</button>
                                 {results.intermediateTask2 && <div className={`result-message ${results.intermediateTask2.type}`}>{results.intermediateTask2.message}</div>}
                                 {showAiButtons.intermediateTask2 && !isTaskCompleted('intermediateTask2') &&
                                     <button
-                                        onClick={() => handleAskAI('intermediateTask2')}
+                                        onClick={() => {handleAskAI('intermediateTask2'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'intermediateTask2'}
                                     >
@@ -1226,7 +1251,7 @@ const CulturalProverbsModule = () => {
                                 {results.intermediateTask3 && <div className={`result-message ${results.intermediateTask3.type}`}>{results.intermediateTask3.message}</div>}
                                 {showAiButtons.intermediateTask3 && !isTaskCompleted('intermediateTask3') &&
                                     <button
-                                        onClick={() => handleAskAI('intermediateTask3')}
+                                        onClick={() => {handleAskAI('intermediateTask3'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'intermediateTask3'}
                                     >
@@ -1254,23 +1279,128 @@ const CulturalProverbsModule = () => {
                             <div className="mb-6 p-4 border rounded-md task-card bg-white">
                                 <h4 className="font-semibold mb-2">{t('intermediateTask4Title')}</h4>
                                 <p className="mb-3 text-sm text-gray-600">{t('intermediateTask4Desc')}</p>
-                                {[
-                                    { key: 'q1', proverb: '1. "Sabrlik – oltin." (Patience is gold.)' },
-                                    { key: 'q2', proverb: '2. "Tez harakat qilmagan, peshonasini uradi." (He who hesitates, regrets.)' },
-                                    { key: 'q3', proverb: '3. "Yomg‘irdan qochib, do‘lga tutilma." (Out of the frying pan, into the fire.)' },
-                                ].map(q => (
-                                    <div key={q.key} className="mb-4">
-                                        <p className="font-medium">{q.proverb}</p>
+                                <div key="q1" className="mb-4">
+                                        <p className="font-medium">1. "Sabrlik – oltin." (Patience is gold.)</p>
                                         <div className="mt-1">
-                                            <label className="radio-label"><input type="radio" name={`debate${q.key}`} value="agree" className="radio-input" /><span>{t('agree')}</span></label>
-                                            <label className="radio-label"><input type="radio" name={`debate${q.key}`} value="disagree" className="radio-input" /><span>{t('disagree')}</span></label>
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq1`}
+                                                value="agree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q1', e.target.value)}
+                                            />
+                                            <span>{t('agree')}</span>
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq1`}
+                                                value="disagree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q1', e.target.value)}
+                                            />
+                                            <span>{t('disagree')}</span>
+                                            </label>
                                         </div>
-                                        <textarea className="border rounded px-2 py-1 w-full h-16 mt-2" placeholder={language === 'ru' ? 'Объяснение...' : 'Explanation...'}></textarea>
-                                    </div>
-                                ))}
+                                        <textarea  
+                                        className="border rounded px-2 py-1 w-full h-16 mt-2"
+                                        placeholder = {language === 'ru' ? 'Объяснение...' : 'Explanation...'}
+                                        value={answers.intermediateTask4?.q1 || ''}
+                                        onChange={(e) => handleAnswerChange('intermediateTask4', "q1", e.target.value)}
+                                        disabled={isTaskCompleted('intermediateTask4') || progressLoading}
+                                        ></textarea>
+                                </div>
+                                <div key="q2" className="mb-4">
+                                        <p className="font-medium">2. "Tez harakat qilmagan, peshonasini uradi." (He who hesitates, regrets.)</p>
+                                        <div className="mt-1">
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq2`}
+                                                value="agree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q2', e.target.value)}
+                                            />
+                                            <span>{t('agree')}</span>
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq2`}
+                                                value="disagree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q2', e.target.value)}
+                                            />
+                                            <span>{t('disagree')}</span>
+                                            </label>
+                                        </div>
+                                        <textarea  
+                                        className="border rounded px-2 py-1 w-full h-16 mt-2"
+                                        placeholder = {language === 'ru' ? 'Объяснение...' : 'Explanation...'}
+                                        value={answers.intermediateTask4?.q2 || ''}
+                                        onChange={(e) => handleAnswerChange('intermediateTask4', "q2", e.target.value)}
+                                        disabled={isTaskCompleted('intermediateTask4') || progressLoading}
+                                        ></textarea>
+                                </div>
+                                <div key="q3" className="mb-4">
+                                        <p className="font-medium">3. "Yomg‘irdan qochib, do‘lga tutilma." (Out of the frying pan, into the fire.)</p>
+                                        <div className="mt-1">
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq3`}
+                                                value="agree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q3', e.target.value)}
+                                            />
+                                            <span>{t('agree')}</span>
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                type="radio"
+                                                name={`debateq3`}
+                                                value="disagree"
+                                                className="radio-input"
+                                                onChange={(e) => handleAnswerChange('intermediateTask4', 'agree_disagree_q3', e.target.value)}
+                                            />
+                                            <span>{t('disagree')}</span>
+                                            </label>
+                                        </div>
+                                        <textarea  
+                                        className="border rounded px-2 py-1 w-full h-16 mt-2"
+                                        placeholder = {language === 'ru' ? 'Объяснение...' : 'Explanation...'}
+                                        value={answers.intermediateTask4?.q3 || ''}
+                                        onChange={(e) => handleAnswerChange('intermediateTask4', "q3", e.target.value)}
+                                        disabled={isTaskCompleted('intermediateTask4') || progressLoading}
+                                        ></textarea>
+                                </div>
                                 <button onClick={() => handleSubmit('intermediateTask4')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask4') || progressLoading}>{t('submitBtn')}</button>
                                 {results.intermediateTask4 && <div className={`result-message ${results.intermediateTask4.type}`}>{results.intermediateTask4.message}</div>}
-                                {/* AI Chat for intermediateTask4 would go here if implemented in the future */}
+                                {showAiButtons.intermediateTask4 && !isTaskCompleted('intermediateTask4') &&
+                                    <button
+                                        onClick={() => {handleAskAI('intermediateTask4'); setChatMessages([])}}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'intermediateTask4'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'intermediateTask4' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'intermediateTask4' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('intermediateTask4', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 5 (Open-ended) */}
@@ -1292,7 +1422,7 @@ const CulturalProverbsModule = () => {
                                 {results.intermediateTask5 && <div className={`result-message ${results.intermediateTask5.type}`}>{results.intermediateTask5.message}</div>}
                                 {showAiButtons.intermediateTask5 && !isTaskCompleted('intermediateTask5') &&
                                     <button
-                                        onClick={() => handleAskAI('intermediateTask5')}
+                                        onClick={() => {handleAskAI('intermediateTask5'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'intermediateTask5'}
                                     >
@@ -1360,7 +1490,7 @@ const CulturalProverbsModule = () => {
                                 {results.advancedTask1 && <div className={`result-message ${results.advancedTask1.type}`}>{results.advancedTask1.message}</div>}
                                 {showAiButtons.advancedTask1 && !isTaskCompleted('advancedTask1') &&
                                     <button
-                                        onClick={() => handleAskAI('advancedTask1')}
+                                        onClick={() => {handleAskAI('advancedTask1'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'advancedTask1'}
                                     >
@@ -1429,7 +1559,7 @@ const CulturalProverbsModule = () => {
                                 {results.advancedTask2 && <div className={`result-message ${results.advancedTask2.type}`}>{results.advancedTask2.message}</div>}
                                 {showAiButtons.advancedTask2 && !isTaskCompleted('advancedTask2') &&
                                     <button
-                                        onClick={() => handleAskAI('advancedTask2')}
+                                        onClick={() => {handleAskAI('advancedTask2'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'advancedTask2'}
                                     >
@@ -1486,7 +1616,7 @@ const CulturalProverbsModule = () => {
                                 {results.advancedTask3 && <div className={`result-message ${results.advancedTask3.type}`}>{results.advancedTask3.message}</div>}
                                 {showAiButtons.advancedTask3 && !isTaskCompleted('advancedTask3') &&
                                     <button
-                                        onClick={() => handleAskAI('advancedTask3')}
+                                        onClick={() => {handleAskAI('advancedTask3'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'advancedTask3'}
                                     >
@@ -1572,7 +1702,7 @@ const CulturalProverbsModule = () => {
                                 {results.advancedTask5 && <div className={`result-message ${results.advancedTask5.type}`}>{results.advancedTask5.message}</div>}
                                 {showAiButtons.advancedTask5 && !isTaskCompleted('advancedTask5') &&
                                     <button
-                                        onClick={() => handleAskAI('advancedTask5')}
+                                        onClick={() => {handleAskAI('advancedTask5'); setChatMessages([])}}
                                         className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                         disabled={isAiLoading && activeChatTaskKey === 'advancedTask5'}
                                     >

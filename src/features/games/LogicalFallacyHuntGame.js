@@ -196,13 +196,11 @@ Explanation: ${t[arg.explanation_key]}`;
         setActiveChat(true);
         setCurrentError('');
         const t = gameData[lang];
-        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
 
         if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else {
-            setChatMessages([{ sender: 'ai', text: "You can ask about specific fallacies, why your answer was correct/incorrect for an argument, or for more examples." }, thinkingMsg]);
-        }
+                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+            }
 
         try {
             const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_LogicalFallacy();
@@ -212,20 +210,21 @@ Explanation: ${t[arg.explanation_key]}`;
                 task_id: 'main_game',
                 interaction_type,
                 block_context,
-                user_inputs: user_inputs, // Ensure this key is user_inputs
-                user_query
+                user_inputs, // Ensure this key is user_inputs
+                userQuery,
+                chatMessages,
             });
 
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error('Error fetching AI for LogicalFallacyHuntGame:', error);
             const errorMsg = error.message || 'Failed to get AI response.';
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
             ]);
             setCurrentError(errorMsg);
         } finally {

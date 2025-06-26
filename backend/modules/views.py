@@ -4,7 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import UserModuleProgress # Assumes models.py exists
 from .serializers import UserModuleProgressSerializer, GeminiExplanationRequestSerializer, GeminiExplanationResponseSerializer
-import google.generativeai as genai
+# import google.generativeai as genai
+from google import genai
+from openai import OpenAI
 import logging
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,12 @@ class GeminiProverbExplanationView(APIView):
         correct_answers_list = validated_data.get('correct_answers', []) # Default to empty list if not provided
         user_query = validated_data.get('user_query')
         interaction_type = validated_data.get('interaction_type')
+        chat_history = request.data.get("chat_history", [])
+
+
+        print("Block", block_context)
+        print("User answers",user_answers_list)
+        print("correct ", correct_answers_list)
 
         # Consolidate user's written response for discussion into a single string if it's from user_answers_list
         user_written_response = ""
@@ -53,7 +61,10 @@ class GeminiProverbExplanationView(APIView):
             )
 
         try:
-            genai.configure(api_key=api_key)
+            client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
         except Exception as e:
             return Response(
                 {"error": f"Failed to configure Gemini API: {str(e)}"},
@@ -71,63 +82,55 @@ class GeminiProverbExplanationView(APIView):
             new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. Ensure your tone is always polite, respectful, and encouraging. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'."
 
             if user_query: # Follow-up for mistake explanation
-                prompt_parts = [
-                    new_core_instruction,
-                    "You previously provided an explanation to the user regarding the following context:",
-                    f"Original Context/Questions: {block_context}",
-                    f"The user's original answers were: {formatted_user_answers}",
-                    f"Correct Answers for that context: {formatted_correct_answers}",
-                    topic_relevance_instruction,
-                    f"The user now has a specific follow-up question: '{user_query}'",
-                    "Please provide a concise answer directly TO THE USER for this follow-up question. Focus on their new question."
-                ]
-            else: # Initial mistake explanation
-                prompt_parts = [
-                    new_core_instruction,
-                    "The user was presented with the following context/questions related to proverbs:",
-                    f"Context/Questions: {block_context}",
-                    f"The user's answers were: {formatted_user_answers}",
-                    f"The correct answers are: {formatted_correct_answers}",
-                    topic_relevance_instruction,
-                    "Now, please analyze the user's answers and explain any mistakes directly to them. For example, start with 'In your answer to question 1, you mentioned X, but the correct approach is Y because...'.",
-                    "If all answers are correct, acknowledge this by saying something like 'Your answers are all correct!' or 'You've answered everything correctly!'.",
-                    "After your analysis/acknowledgement, please ask the user if they have any further questions, like 'Do you have any questions about this?'."
-                ]
+                chat_history.append({"role": "user", "content": user_query})
+            # Initial mistake explanation
+            prompt_parts = [
+                new_core_instruction,
+                "The user was presented with the following context/questions related to proverbs:",
+                f"Context/Questions: {block_context}",
+                f"The user's answers were: {formatted_user_answers}",
+                f"The correct answers are: {formatted_correct_answers}",
+                topic_relevance_instruction,
+                "Now, please analyze the user's answers and explain any mistakes directly to them. For example, start with 'In your answer to question 1, you mentioned X, but the correct approach is Y because...'.",
+                "If all answers are correct, acknowledge this by saying something like 'Your answers are all correct!' or 'You've answered everything correctly!'.",
+                "After your analysis/acknowledgement, please ask the user if they have any further questions, like 'Do you have any questions about this?'."
+            ]
         elif interaction_type == 'discuss_open_ended':
             new_core_instruction = "You are an AI assistant. Your role is to provide feedback on the user's work or answer the user's questions. Ensure your tone is always polite, respectful, and encouraging. When you generate your response, speak directly TO the user, addressing them using 'you' and referring to their work as 'your response', 'your answers', or 'your question'. Do NOT speak as if you ARE the user. For example, if the user wrote an essay, your feedback should be like 'Your essay is good because...' AND NOT 'My essay is good because...'." # Duplicated for safety, though ideally defined once.
 
             if user_query: # Follow-up within a discussion
-                prompt_parts = [
-                    new_core_instruction,
-                    "You are continuing a discussion with the user.",
-                    f"The main discussion prompt/context was: {block_context}",
-                    f"The user initially responded with: {user_written_response}", # This is the user's main essay/answer
-                    topic_relevance_instruction,
-                    f"The user now has this follow-up question or comment: '{user_query}'",
-                    "Please provide a thoughtful and concise response directly TO THE USER for this follow-up, keeping the discussion going. Encourage deeper reflection or offer related insights if appropriate."
-                ]
-            else: # Initial feedback on a discussion response
-                prompt_parts = [
-                    new_core_instruction,
-                    f"The discussion prompt/context given to the user was: {block_context}",
-                    f"The user has provided the following response/input: {user_written_response}",
-                    topic_relevance_instruction,
-                    "Please review the user's response. Provide constructive feedback directly TO THE USER on their input (e.g., acknowledge their points by saying 'You made a good point about...' or 'Your analysis of X was insightful because...', suggest areas for deeper thought, or offer different perspectives).",
-                    "Your feedback should be encouraging and aim to stimulate further thought.",
-                    "After providing your feedback on their initial response, please invite the user to ask further questions or discuss related ideas, for example: 'What are your further thoughts on this?' or 'Do you have any questions?'."
-                ]
+                chat_history.append({"role": "user", "content": user_query})
+            
+            prompt_parts = [
+                new_core_instruction,
+                f"The discussion prompt/context given to the user was: {block_context}",
+                f"The user has provided the following response/input: {user_written_response}",
+                topic_relevance_instruction,
+                "Please review the user's response. Provide constructive feedback directly TO THE USER on their input (e.g., acknowledge their points by saying 'You made a good point about...' or 'Your analysis of X was insightful because...', suggest areas for deeper thought, or offer different perspectives).",
+                "Your feedback should be encouraging and aim to stimulate further thought.",
+                "After providing your feedback on their initial response, please invite the user to ask further questions or discuss related ideas, for example: 'What are your further thoughts on this?' or 'Do you have any questions?'."
+            ]
         else:
             return Response({"error": "Invalid interaction_type specified."}, status=status.HTTP_400_BAD_REQUEST)
 
         final_prompt = "\n\n".join(prompt_parts)
-        print(f"Gemini Interaction Type: {interaction_type}") # Log interaction type
-        print(f"Gemini Final Prompt:\n{final_prompt}")
+        if not user_query:
+            chat_history.append({"role": "user", "content": final_prompt})
+            print("Line 122 views", chat_history)
+        else:
+            chat_history = [{"role": "user", "content": final_prompt}] + chat_history
+        logger.debug(f"Generic AI Final Prompt:\n{final_prompt}")
 
         # 4. Initialize the Gemini model and generate content
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            response_gemini = model.generate_content(final_prompt)
-            ai_explanation = response_gemini.text
+            print("Line 129", chat_history)
+            response = client.chat.completions.create(
+                model="gemini-2.5-flash",
+                messages = chat_history
+            )
+            print("Line 134", response.choices[0].message.content)
+            # response_gemini = model.generate_content(final_prompt)
+            ai_explanation = response.choices[0].message.content
 
         except Exception as e:
             print(f"Gemini API Error: {str(e)}")
@@ -166,6 +169,7 @@ class GeminiDebateDiscussionView(APIView):
         block_context = validated_data.get('block_context')
         user_answers_list = validated_data.get('user_answers')
         user_query = validated_data.get('user_query')
+        chat_history = request.data.get("chat_history")
         # interaction_type = validated_data.get('interaction_type') # Likely always 'discuss_open_ended'
 
         user_written_response = ""
@@ -179,7 +183,10 @@ class GeminiDebateDiscussionView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         try:
-            genai.configure(api_key=api_key)
+            client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
         except Exception as e:
             return Response(
                 {"error": f"Failed to configure Gemini API: {str(e)}"},
@@ -192,35 +199,33 @@ class GeminiDebateDiscussionView(APIView):
         prompt_parts = []
 
         if user_query: # Follow-up discussion
-            prompt_parts = [
-                core_debate_instruction,
-                "You are continuing a discussion with the user.",
-                f"The main discussion prompt/context was: {block_context}",
-                f"The user initially responded with: {user_written_response}",
-                topic_relevance_instruction,
-                f"The user now has this follow-up question or comment: '{user_query}'",
-                "Please provide a thoughtful and concise response directly TO THE USER for this follow-up, keeping the discussion going. Encourage deeper reflection, explore nuances, or offer related insights, as appropriate. Maintain neutrality and politeness."
-            ]
-        else: # Initial discussion
-            prompt_parts = [
-                core_debate_instruction,
-                f"The discussion prompt/context given to the user was: {block_context}",
-                f"The user has provided the following response/input: {user_written_response}",
-                topic_relevance_instruction,
-                "Acknowledge the user's main points or arguments (e.g., 'Thanks for sharing your thoughts on X. You've made an interesting point about Y.').",
-                "Encourage deeper reflection. You can ask clarifying questions, suggest they consider alternative viewpoints, or gently point out potential assumptions or areas to strengthen their argument (e.g., 'Have you considered how Z might view this?', 'What evidence supports your claim about A?', 'That's a valid perspective. How might someone argue against it?').",
-                "Avoid taking a strong stance yourself; act as a neutral facilitator.",
-                "Invite the user to continue the discussion (e.g., 'What are your further thoughts on this?', 'Is there anything else you'd like to explore regarding this topic?')."
-            ]
+            chat_history.append({"role": "user", "content": user_query})
+        # Initial discussion
+        prompt_parts = [
+            core_debate_instruction,
+            f"The discussion prompt/context given to the user was: {block_context}",
+            f"The user has provided the following response/input: {user_written_response}",
+            topic_relevance_instruction,
+            "Acknowledge the user's main points or arguments (e.g., 'Thanks for sharing your thoughts on X. You've made an interesting point about Y.').",
+            "Encourage deeper reflection. You can ask clarifying questions, suggest they consider alternative viewpoints, or gently point out potential assumptions or areas to strengthen their argument (e.g., 'Have you considered how Z might view this?', 'What evidence supports your claim about A?', 'That's a valid perspective. How might someone argue against it?').",
+            "Avoid taking a strong stance yourself; act as a neutral facilitator.",
+            "Invite the user to continue the discussion (e.g., 'What are your further thoughts on this?', 'Is there anything else you'd like to explore regarding this topic?')."
+        ]
 
         final_prompt = "\n\n".join(prompt_parts)
-        print(f"Gemini DEBATE Interaction Type: {'Follow-up' if user_query else 'Initial'}")
-        print(f"Gemini DEBATE Final Prompt:\n{final_prompt}")
+        if not user_query:
+            chat_history.append({"role": "user", "content": final_prompt})
+        else:
+            chat_history = [{"role": "user", "content": final_prompt}] + chat_history
 
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            response_gemini = model.generate_content(final_prompt)
-            ai_explanation = response_gemini.text
+            response = client.chat.completions.create(
+                model="gemini-2.5-flash",
+                messages = chat_history
+            )
+            print("Line 516", response.choices[0].message.content)
+            # response_gemini = model.generate_content(final_prompt)
+            ai_explanation = response.choices[0].message.content
         except Exception as e:
             print(f"Gemini API Error (Debate View): {str(e)}")
             error_message = f"Error communicating with AI service: {str(e)}"
@@ -376,6 +381,8 @@ class GenericAiInteractionView(APIView):
         user_inputs_list = validated_data.get('user_answers', []) # Renamed from user_answers to reflect it's a list
         correct_answers_data_list = validated_data.get('correct_answers', [])
         user_query = validated_data.get('user_query', '')
+        chat_history = request.data.get('chat_history', [])
+        print("Line 302", chat_history)
 
         logger.info(f"Generic AI Interaction called: module='{module_id}', task='{task_id}', interaction='{interaction_type}'")
 
@@ -388,7 +395,12 @@ class GenericAiInteractionView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         try:
-            genai.configure(api_key=api_key)
+            # genai.configure(api_key=api_key)
+            # client = genai.Client(api_key=api_key)
+            client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
         except Exception as e:
             logger.error(f"Failed to configure Gemini API: {str(e)}")
             return Response(
@@ -412,18 +424,13 @@ class GenericAiInteractionView(APIView):
         if module_id == 'fact-opinion':
             prompt_parts.append("You are currently assisting with the 'Fact or Opinion' module.")
             if user_query: # General query within Fact-Opinion, or a follow-up
-                prompt_parts.extend([
-                    f"The user is working on a task with the following context or instructions: {block_context}",
-                    f"Previously, the user might have provided these inputs related to the task: {user_inputs_str}",
-                    f"The user now has a specific question: '{user_query}'",
-                    "Please provide a clear and concise answer to the user's question, keeping in mind the module's focus on facts, opinions, bias, and critical thinking."
-                ])
-            elif interaction_type == 'explain_fact_opinion_choice':
+                chat_history.append({"role": "user", "content": user_query})
+            if interaction_type == 'explain_fact_opinion_choice':
                 prompt_parts.extend([
                     f"The user was presented with this statement/question: {block_context}",
-                    f"The user's answer was: {user_inputs_list[0] if user_inputs_list else 'Not provided'}", # Assumes user_inputs_list[0] is the choice
-                    f"The correct answer is: {correct_answers_list[0] if correct_answers_data_list else 'Not specified'}", # Assumes correct_answers_data_list[0]
-                    "Please explain why the user's answer is correct or incorrect, focusing on the definitions of fact and opinion or the nature of bias if relevant. If the user provided an explanation as part of their input (e.g. if user_inputs_list has more than one element), comment on that too."
+                    f"The user's answers were: {user_inputs_list if user_inputs_list else 'Not provided'}", # Assumes user_inputs_list[0] is the choice
+                    f"The correct answers are: {correct_answers_data_list if correct_answers_data_list else 'Not specified'}", # Assumes correct_answers_data_list[0]
+                    "Please explain why the user's answers are correct or incorrect, focusing on the definitions of fact and opinion or the nature of bias if relevant. If the user provided an explanation as part of their input (e.g. if user_inputs_list has more than one element), comment on that too."
                 ])
             elif interaction_type == 'feedback_on_rewrite':
                 prompt_parts.extend([
@@ -461,19 +468,21 @@ class GenericAiInteractionView(APIView):
         elif module_id.startswith('game-'):
             prompt_parts.append(f"You are assisting with the '{module_id}' game.")
             if user_query:
-                prompt_parts.extend([
-                    "The user has previously played this game and seen a summary of their performance.",
-                    f"For reference, the game's general context/rules were: {block_context}",
-                    f"And a summary of their performance/choices was: {user_inputs_str}",
-                    f"The user now has the following specific question about the game or their performance: '{user_query}'",
-                    "Please directly answer this question. You can refer to the game context or their performance summary if it helps clarify your answer to their specific question, but your primary goal is to address their latest query. Do not re-summarize their overall game performance unless it's directly relevant to answering their question."
-                ])
-            else: # Initial interaction for the game
-                prompt_parts.extend([
-                    f"The user has just completed a session of this game. The game's general context/rules were: {block_context}",
-                    f"Here is a summary of their performance/choices: {user_inputs_str}",
-                    "Please provide a brief, helpful commentary on their performance and the game items. You can highlight areas they did well or areas for improvement. After your commentary, invite them to ask specific questions if they want to understand any part better, discuss particular items, or get more examples."
-                ])
+                # prompt_parts.extend([
+                #     "The user has previously played this game and seen a summary of their performance.",
+                #     f"For reference, the game's general context/rules were: {block_context}",
+                #     f"And a summary of their performance/choices was: {user_inputs_str}",
+                #     f"The user now has the following specific question about the game or their performance: '{user_query}'",
+                #     "Please directly answer this question. You can refer to the game context or their performance summary if it helps clarify your answer to their specific question, but your primary goal is to address their latest query. Do not re-summarize their overall game performance unless it's directly relevant to answering their question."
+                # ])
+                chat_history.append({"role": "user", "content": user_query})
+                print("Views py 472", chat_history)
+             # Initial interaction for the game
+            prompt_parts.extend([
+                f"The user has just completed a session of this game. The game's general context/rules were: {block_context}",
+                f"Here is a summary of their performance/choices: {user_inputs_str}",
+                "Please provide a brief, helpful commentary on their performance and the game items. You can highlight areas they did well or areas for improvement. After your commentary, invite them to ask specific questions if they want to understand any part better, discuss particular items, or get more examples."
+            ])
         # Placeholder for other module_ids (e.g., 'proverbs', 'debating')
         # elif module_id == 'debating':
         #     prompt_parts.append("You are currently assisting with the 'Debating Social Issues' module.")
@@ -486,15 +495,27 @@ class GenericAiInteractionView(APIView):
                 f"User's specific question (if any): {user_query}",
                 "Please provide helpful, general assistance based on the information provided. If the module or task is unclear, you can state that you'll provide the best general guidance possible."
             ])
-
+        print("line 500")
         final_prompt = "\n\n".join(prompt_parts)
+        if not user_query:
+            chat_history.append({"role": "user", "content": final_prompt})
+            print("Line 504 views", chat_history)
+        else:
+            chat_history = [{"role": "user", "content": final_prompt}] + chat_history
         logger.debug(f"Generic AI Final Prompt:\n{final_prompt}")
 
         # 4. Initialize the Gemini model and generate content
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest') # Or your preferred model
-            response_gemini = model.generate_content(final_prompt)
-            ai_explanation = response_gemini.text
+            # model = genai.GenerativeModel('gemini-2.5-flash') # Or your preferred model
+            # chat = client.chats.create(model="gemini-2.5-flash")
+            print("Line 510", chat_history)
+            response = client.chat.completions.create(
+                model="gemini-2.5-flash",
+                messages = chat_history
+            )
+            print("Line 516", response.choices[0].message.content)
+            # response_gemini = model.generate_content(final_prompt)
+            ai_explanation = response.choices[0].message.content
         except Exception as e:
             logger.error(f"Generic AI Gemini API Error: {str(e)}")
             # Extract more specific error details if possible (similar to other views)

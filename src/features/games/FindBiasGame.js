@@ -160,12 +160,10 @@ export default function FindBiasGame() {
         setActiveChat(true);
         setCurrentError('');
         const t = translations[lang];
-        const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
 
         if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else {
-            setChatMessages([{ sender: 'ai', text: "You can ask why a snippet is biased or neutral, or discuss your results." }, thinkingMsg]);
+            setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
         }
 
         try {
@@ -177,19 +175,20 @@ export default function FindBiasGame() {
                 interaction_type,
                 block_context,
                 user_inputs,
-                user_query
+                userQuery,
+                chatMessages,
             });
 
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error('Error fetching AI for FindBiasGame:', error);
             const errorMsg = error.message || 'Failed to get AI response.';
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: `Sorry, I encountered an error: ${errorMsg}` }
+                ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
             ]);
             setCurrentError(errorMsg);
         } finally {

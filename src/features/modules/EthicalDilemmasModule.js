@@ -279,18 +279,18 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
         const thinkingMsg = { sender: 'ai', text: t.aiThinking || 'Thinking...' };
 
         if (userQuery) {
-            setChatMessages(prev => [...prev, { sender: 'user', text: userQuery }, thinkingMsg]);
-        } else {
-            setChatMessages([thinkingMsg]);
+            setChatMessages(prev => [
+                ...prev,
+                { "role" : 'user', "content": userQuery },
+            ]);
         }
-
         try {
             const { block_context, user_answers, interaction_type } = getTaskDetailsForAI_EthicalDilemmas(taskKey);
-            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery);
+            const response = await moduleService.getAiDebateDiscussion(block_context, user_answers, userQuery, chatMessages);
 
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.text !== (t.aiThinking || 'Thinking...')),
-                { sender: 'ai', text: response.explanation }
+                ...prev.filter(msg => msg["content"] !== 'Thinking...'),
+                { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error(`Error fetching AI discussion for ${taskKey}:`, error);
@@ -376,6 +376,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
             )}
         </div>
     );
+}
 
     return (
         <div className="bg-gray-100 text-gray-800 font-sans">

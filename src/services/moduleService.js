@@ -185,20 +185,27 @@ const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
 };
 
 // Function to get AI explanation for proverb mistakes
-const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers, userQuery = '') => {
+const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers = [], userQuery = '', chatMessages = [], interaction_type = "") => {
     let token = authService.getAuthToken();
     if (!token) {
         // This error should ideally be caught by UI logic preventing call if not logged in
         // or if token is known to be missing.
         throw new Error('User not authenticated. Cannot fetch AI explanation.');
     }
-
+    console.log("line 195 block context", blockContext)
+    console.log("useranswer", userAnswers)
+    console.log("correct", correctAnswers)
+    console.log("userquery", userQuery)
+    console.log("chat messages", chatMessages)
+    console.log("interaction", interaction_type)
     const requestUrl = `${API_BASE_URL}/ai/explain-proverb/`; // Note: API_BASE_URL is '/api/modules'
     const requestBody = {
         block_context: blockContext,
         user_answers: userAnswers,
         correct_answers: correctAnswers,
         user_query: userQuery,
+        chat_history: chatMessages,
+        interaction_type: interaction_type
     };
 
     const requestOptions = {
@@ -227,29 +234,24 @@ const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers
     }
 };
 
-export default {
-    getModuleProgress,
-    markTaskAsCompleted,
-    getAiProverbExplanation,
-    // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
-    getAiDebateDiscussion, // Ensure this is moved before export and included
-    getGenericAiInteraction, // To be added
-};
 
 // Function to get AI feedback for debate discussions
 // Moved before export default
-async function getAiDebateDiscussion(block_context, user_answers, user_query = '') {
+async function getAiDebateDiscussion(block_context, user_answers, userQuery = '', chatMessages = []) {
     let token = authService.getAuthToken();
     if (!token) {
         throw new Error('User not authenticated. Cannot fetch AI debate discussion.');
     }
 
     const requestUrl = `${API_BASE_URL}/ai-debate-discussion/`; // Ensure this matches your Django URL
+    console.log("line 255 module service",block_context )
+    console.log(user_answers)
     const requestBody = {
         block_context: block_context,
-        user_answers: user_answers, // This will be the user's arguments/thoughts
-        user_query: user_query,     // For follow-up questions/comments
+        user_answers: user_answers || [], // This will be the user's arguments/thoughts
+        user_query: userQuery || " ",     // For follow-up questions/comments
         interaction_type: 'discuss_open_ended', // Hardcoded for this type of interaction
+        chat_history: chatMessages || "",
         // 'correct_answers' is not typically needed for debates, so it's omitted
     };
 
@@ -325,8 +327,10 @@ async function getGenericAiInteraction(requestData) {
         block_context: requestData.block_context,
         user_answers: requestData.user_inputs || [], // Map to backend's expected key
         correct_answers: requestData.correct_answers_data || [], // Map to backend's expected key
-        user_query: requestData.user_query || ''
+        user_query: requestData.userQuery || '',
+        chat_history: requestData.chatMessages || [],
     };
+    console.log("MOdule service js BODY: ", body)
 
     const requestOptions = {
         method: 'POST',
@@ -346,3 +350,12 @@ async function getGenericAiInteraction(requestData) {
         throw error;
     }
 }
+
+export default {
+    getModuleProgress,
+    markTaskAsCompleted,
+    getAiProverbExplanation,
+    // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
+    getAiDebateDiscussion, // Ensure this is moved before export and included
+    getGenericAiInteraction, // To be added
+};

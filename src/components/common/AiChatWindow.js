@@ -59,14 +59,14 @@ const AiChatWindow = ({ messages, onSendMessage, isLoading, initialMessage }) =>
             {/* Messages Area: Keep as is, or slightly lighter background if main bg-white is too stark for messages. */}
             <div ref={chatMessagesRef} className="flex-grow p-4 space-y-3 overflow-y-auto bg-slate-50"> {/* Added bg-slate-50 for slight contrast */}
                 {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={index} className={`flex ${msg["role"] === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`px-4 py-2 rounded-xl max-w-xs lg:max-w-md shadow-sm ${ // Changed to rounded-xl, added shadow-sm
-                            msg.sender === 'user'
+                            msg["role"] === 'user'
                                 ? 'bg-indigo-600 text-white' // Example: Using Indigo for user
                                 : 'bg-stone-200 text-stone-800' // Example: Using a warmer gray for AI
                         }`}>
-                            {typeof msg.text === 'string' ? msg.text.split('\n').map((line, i) => (
-                                <React.Fragment key={i}>{line}{i !== msg.text.split('\n').length - 1 && <br />}</React.Fragment>
+                            {typeof msg["content"] === 'string' ? msg["content"].split('\n').map((line, i) => (
+                                <React.Fragment key={i}>{line}{i !== msg["content"].split('\n').length - 1 && <br />}</React.Fragment>
                             )) : 'Invalid message format'}
                         </div>
                     </div>
