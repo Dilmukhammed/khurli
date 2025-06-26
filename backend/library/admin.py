@@ -10,7 +10,7 @@ class BookAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('title', 'file')
+            'fields': ('title', 'file', 'cover_image')
         }),
         ('Metadata', {
             'fields': ('item_type', 'upload_date', 'updated_date'),
@@ -27,7 +27,7 @@ class ArticleAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('title', 'file')
+            'fields': ('title', 'file', 'cover_image')
         }),
         ('Metadata', {
             'fields': ('item_type', 'upload_date', 'updated_date'),

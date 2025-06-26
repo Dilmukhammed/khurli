@@ -29,6 +29,12 @@ def book_upload_path(instance, filename):
 
 class Book(LibraryItem):
     file = models.FileField(upload_to=book_upload_path, verbose_name=_('File'))
+    cover_image = models.ImageField(
+        upload_to='library/book_covers/',
+        blank=True,
+        null=True,
+        verbose_name=_('Book Cover Image')
+    )
     # Future fields:
     # author = models.CharField(max_length=255, blank=True, null=True, verbose_name=_('Author'))
     # isbn = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('ISBN'))
@@ -47,6 +53,12 @@ def article_upload_path(instance, filename):
 
 class Article(LibraryItem):
     file = models.FileField(upload_to=article_upload_path, verbose_name=_('File'))
+    cover_image = models.ImageField(
+        upload_to='library/article_covers/',
+        blank=True,
+        null=True,
+        verbose_name=_('Article Cover Image')
+    )
     # Future fields:
     # source_url = models.URLField(blank=True, null=True, verbose_name=_('Source URL'))
     # publication_date = models.DateField(blank=True, null=True, verbose_name=_('Publication Date'))
