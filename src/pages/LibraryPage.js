@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
+// Define the API base URL (make sure this matches your Django backend URL)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+
 /**
  * Section Component
  * Renders a titled section with a grid of items (videos, books, or articles).
- * @param {string} title - The title of the section.
- * @param {Array} items - The array of items to display.
- * @param {string} itemType - The type of items ('video', 'book', 'article').
- * @param {string} placeholder - Text to show if there are no items.
- * @param {string} language - The current display language.
- * @param {object} translations - The translation object for UI strings (specifically for openPdf).
  */
-const Section = ({ title, items, itemType, placeholder, language, translations }) => {
+const Section = ({ title, items, itemType, placeholder, language, translations, isLoading, error }) => {
+  if (isLoading) {
+    placeholder = language === 'ru' ? 'Загрузка...' : 'Loading...';
+  } else if (error) {
+    placeholder = language === 'ru' ? `Ошибка: ${error}` : `Error: ${error}`;
+  }
+
+
   return (
     <section className="mb-12">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6 pb-2 border-b border-gray-300">{title}</h2>
@@ -18,16 +22,16 @@ const Section = ({ title, items, itemType, placeholder, language, translations }
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map(item => (
             <div key={item.id} className="bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
-              {/* Top part of the card: title and media */}
               <div>
                 <h3 className="text-lg font-semibold text-indigo-700 mb-3 min-h-[3.5em]">
-                  {item.title[language] || item.title['en']}
+                  {/* Assuming item.title is now a simple string from API, not an object */}
+                  {item.title}
                 </h3>
                 {itemType === 'video' && item.youtubeId && (
-                  <div className="aspect-video rounded-lg overflow-hidden"> {/* Modern aspect-ratio class */}
+                  <div className="aspect-video rounded-lg overflow-hidden">
                     <iframe
                       src={`https://www.youtube.com/embed/${item.youtubeId}`}
-                      title={item.title[language] || item.title['en']}
+                      title={item.title}
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -36,16 +40,14 @@ const Section = ({ title, items, itemType, placeholder, language, translations }
                   </div>
                 )}
               </div>
-
-              {/* Bottom part of the card: action button */}
-              {(itemType === 'book' || itemType === 'article') && item.pdfUrl && (
+              {(itemType === 'book' || itemType === 'article') && item.file_url && (
                 <a
-                  href={item.pdfUrl}
+                  href={item.file_url} // Use file_url from API
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block mt-4 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium py-2 px-4 rounded-md text-center transition-colors duration-300"
                 >
-                  {translations.openPdf} {/* Using the passed translations object */}
+                  {translations.openPdf}
                 </a>
               )}
             </div>
@@ -60,61 +62,90 @@ const Section = ({ title, items, itemType, placeholder, language, translations }
 
 
 const LibraryPage = () => {
-  const [language, setLanguage] = useState('ru'); // Default language
+  const [language, setLanguage] = useState('ru');
+
+  const [books, setBooks] = useState([]);
+  const [articles, setArticles] = useState([]);
+  const [loadingBooks, setLoadingBooks] = useState(true);
+  const [loadingArticles, setLoadingArticles] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const storedLang = localStorage.getItem('logiclingua-lang');
     if (storedLang) {
       setLanguage(storedLang);
     }
-  }, []);
 
+    const fetchLibraryData = async () => {
+      try {
+        // Fetch Books
+        setLoadingBooks(true);
+        const booksResponse = await fetch(`${API_BASE_URL}/api/library/books/`);
+        if (!booksResponse.ok) {
+          throw new Error(`Failed to fetch books: ${booksResponse.statusText} (${booksResponse.status})`);
+        }
+        const booksData = await booksResponse.json();
+        setBooks(booksData.results || booksData); // Handle pagination if DRF default is used
+        setLoadingBooks(false);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+        setLoadingBooks(false);
+      }
 
-  // Define translations
-  const i18n = { // Renamed to avoid conflict with 'translations' prop name in Section
+      try {
+        // Fetch Articles
+        setLoadingArticles(true);
+        const articlesResponse = await fetch(`${API_BASE_URL}/api/library/articles/`);
+        if (!articlesResponse.ok) {
+          throw new Error(`Failed to fetch articles: ${articlesResponse.statusText} (${articlesResponse.status})`);
+        }
+        const articlesData = await articlesResponse.json();
+        setArticles(articlesData.results || articlesData); // Handle pagination
+        setLoadingArticles(false);
+      } catch (err) {
+        console.error(err);
+        setError(err.message); // This might overwrite book error, consider separate error states or combining
+        setLoadingArticles(false);
+      }
+    };
+
+    fetchLibraryData();
+  }, []); // Runs once on component mount
+
+  const i18n = {
     ru: {
       title: "Библиотека",
       videosTitle: "Видео",
-      videosPlaceholder: "Видео пока не добавлены.",
+      videosPlaceholder: "Видео пока не добавлены.", // Videos still use sample data for now
       booksTitle: "Книги",
-      booksPlaceholder: "Книги пока не добавлены.",
+      booksPlaceholder: "Книги не найдены.",
       articlesTitle: "Статьи",
-      articlesPlaceholder: "Статьи пока не добавлены.",
+      articlesPlaceholder: "Статьи не найдены.",
       openPdf: "Открыть PDF",
+      loading: "Загрузка...",
+      fetchError: "Не удалось загрузить данные: ",
     },
     en: {
       title: "Library",
       videosTitle: "Videos",
-      videosPlaceholder: "No videos added yet.",
+      videosPlaceholder: "No videos added yet.", // Videos still use sample data
       booksTitle: "Books",
-      booksPlaceholder: "No books added yet.",
+      booksPlaceholder: "No books found.",
       articlesTitle: "Articles",
-      articlesPlaceholder: "No articles added yet.",
+      articlesPlaceholder: "No articles found.",
       openPdf: "Open PDF",
+      loading: "Loading...",
+      fetchError: "Failed to load data: ",
     }
   };
 
-  // Select the correct translation object based on the current language
-  const t = i18n[language] || i18n.en; // Fallback to English
+  const t = i18n[language] || i18n.en;
 
-  // Sample Data (This could come from an API in a real application)
+  // Sample Data for Videos (remains static for now)
   const sampleVideos = [
     { id: 'vid1', title: { en: 'Casually Explained: Critical Thinking', ru: 'Критическое мышление: Объяснение простыми словами' }, youtubeId: 'qMrnVkDH2Ak' },
     { id: 'vid2', title: { en: 'Critical thinking at the heart of Gen AI literacy', ru: 'Критическое мышление как ключевой навык для освоения генеративного ИИ' }, youtubeId: 'yr0-RLGZshg' },
-    { id: 'vid3', title: { en: 'How to Improve Your Critical Thinking Skills', ru: 'Как улучшить свои навыки критического мышления' }, youtubeId: 'JOFrjc6u47U' },
-    { id: 'vid4', title: { en: 'Five simple strategies to sharpen your critical thinking | BBC Ideas', ru: 'Пять простых стратегий для развития критического мышления | BBC Ideas' }, youtubeId: 'NHjgKe7JMNE' },
-    { id: 'vid5', title: { en: 'A neuroscientist’s guide to reclaiming your brain | Nicole Vignola', ru: 'Руководство нейробиолога: Как вернуть контроль над своим мозгом | Николь Виньола' }, youtubeId: 'tcbxIoERm6w' },
-  ];
-
-  const sampleBooks = [
-    // Using placeholder URLs for now, will be replaced by API data
-    { id: 'book1', title: { en: 'The Art of Thinking Clearly', ru: 'Искусство ясно мыслить' }, pdfUrl: '#' },
-    { id: 'book2', title: { en: 'Thinking, Fast and Slow', ru: 'Думай медленно... решай быстро' }, pdfUrl: '#' },
-  ];
-
-  const sampleArticles = [
-    { id: 'art1', title: { en: 'How to Spot Fake News', ru: 'Как распознать фейковые новости' }, pdfUrl: '#' },
-    { id: 'art2', title: { en: 'The Impact of Social Media on Information', ru: 'Влияние социальных сетей на информацию' }, pdfUrl: '#' },
   ];
 
 
@@ -125,30 +156,46 @@ const LibraryPage = () => {
           <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">{t.title}</h1>
         </header>
 
+        {error && (
+          <div className="mb-8 p-4 text-center text-red-700 bg-red-100 rounded-md">
+            {t.fetchError}{error}
+          </div>
+        )}
+
         <main className="space-y-16">
+          {/* Videos section remains with sample data for now */}
           <Section
             title={t.videosTitle}
-            items={sampleVideos}
+            items={sampleVideos.map(video => ({ // Adapt sample video titles to be simple strings for consistency
+                ...video,
+                title: video.title[language] || video.title['en']
+            }))}
             itemType="video"
             placeholder={t.videosPlaceholder}
             language={language}
-            translations={t} // Pass the 't' object which contains 'openPdf'
+            translations={t}
+            isLoading={false} // Videos are not loaded from API in this step
+            error={null}
           />
           <Section
             title={t.booksTitle}
-            items={sampleBooks}
+            items={books}
             itemType="book"
             placeholder={t.booksPlaceholder}
             language={language}
-            translations={t} // Pass the 't' object
+            translations={t}
+            isLoading={loadingBooks}
+            error={error && loadingBooks ? error : null} // Show general error if books loading failed
           />
           <Section
             title={t.articlesTitle}
-            items={sampleArticles}
+            items={articles}
             itemType="article"
             placeholder={t.articlesPlaceholder}
             language={language}
-            translations={t} // Pass the 't' object
+            translations={t}
+            isLoading={loadingArticles}
+            error={error && loadingArticles ? error : null} // Show general error if articles loading failed
           />
         </main>
       </div>
