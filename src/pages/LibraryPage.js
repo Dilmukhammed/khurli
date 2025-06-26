@@ -81,14 +81,6 @@ const LibraryPage = () => {
             </div>
           ))}
         </div>
-                  <iframe
-                    src={`https://www.youtube.com/embed/${item.youtubeId}`}
-                    title={item.title[language] || item.title['en']}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                  ></iframe>
                 </div>
               )}
               {(itemType === 'book' || itemType === 'article') && item.pdfUrl && (
