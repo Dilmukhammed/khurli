@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'rest_framework', 'rest_framework_simplejwt', 'corsheaders',
     'accounts', # Accounts app
     'modules',  # Modules app
+    'library',  # New library app
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -46,6 +47,11 @@ DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DI
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
 STATIC_URL = 'static/'
+
+# Media files configuration
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',

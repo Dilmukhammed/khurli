@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import UserModuleProgress # Assumes models.py exists
 from .serializers import UserModuleProgressSerializer, GeminiExplanationRequestSerializer, GeminiExplanationResponseSerializer
-# import google.generativeai as genai
-from google import genai
+import google.generativeai as genai
+# from google import genai # Corrected import
 from openai import OpenAI
 import logging
 logger = logging.getLogger(__name__)
