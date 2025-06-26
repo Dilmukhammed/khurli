@@ -90,8 +90,8 @@ const Header = () => {
           
           {isAuthenticated && (
             <>
-              <NavLink to="/account">{t.navAccount}</NavLink>
               <NavLink to="/library">{t.navLibrary}</NavLink>
+              <NavLink to="/account">{t.navAccount}</NavLink>
             </>
           )}
 
