@@ -43,52 +43,53 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen bg-gray-100 text-gray-800">
           <Header />
-          <main className="flex-grow overflow-y-auto"> {/* Let main scroll, remove container/padding */}
-            <div className="container mx-auto px-6 py-12"> {/* Inner wrapper for container/padding */}
+          <main className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto, removed container classes */}
+            <div className="container mx-auto px-6 py-12"> {/* Inner wrapper for container and padding */}
               <Routes>
                 {/* Main Pages */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route
-                path="/account"
-                element={
-                  <ProtectedRoute>
-                    <PersonalAccount />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/modules" element={<ModulesHub />} />
-              <Route path="/games" element={<GamesHub />} />
-              <Route
-                path="/library"
-                element={
-                  <ProtectedRoute>
-                    <LibraryPage />
-                  </ProtectedRoute>
-                }
-              />
+                <Route path="/register" element={<Register />} />
+                <Route
+                  path="/account"
+                  element={
+                    <ProtectedRoute>
+                      <PersonalAccount />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/modules" element={<ModulesHub />} />
+                <Route path="/games" element={<GamesHub />} />
+                <Route
+                  path="/library"
+                  element={
+                    <ProtectedRoute>
+                      <LibraryPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Module Pages */}
-              <Route path="/modules/cultural-proverbs" element={<CulturalProverbsModule />} />
-              <Route path="/modules/debating" element={<DebatingModule />} />
-              <Route path="/modules/fact-opinion" element={<FactOpinionModule />} />
-              <Route path="/modules/fake-news-analysis" element={<FakeNewsAnalysisModule />} />
-              <Route path="/modules/ethical-dilemmas" element={<EthicalDilemmasModule />} />
+                {/* Module Pages */}
+                <Route path="/modules/cultural-proverbs" element={<CulturalProverbsModule />} />
+                <Route path="/modules/debating" element={<DebatingModule />} />
+                <Route path="/modules/fact-opinion" element={<FactOpinionModule />} />
+                <Route path="/modules/fake-news-analysis" element={<FakeNewsAnalysisModule />} />
+                <Route path="/modules/ethical-dilemmas" element={<EthicalDilemmasModule />} />
 
-              {/* Game Pages */}
-              <Route path="/games/fact-or-fake" element={<FactOrFakeGame />} />
-              <Route path="/games/find-bias" element={<FindBiasGame />} />
-              <Route path="/games/moral-compass" element={<MoralCompassGame />} />
-              <Route path="/games/emoji-debate" element={<EmojiDebateGame />} />
-              <Route path="/games/debate-ai" element={<DebateAi />} />
-              <Route path="/games/misinformation-maze" element={<MisinformationMazeGame />} />
-              <Route path="/games/logical-fallacy-hunt" element={<LogicalFallacyHuntGame />} />
-              <Route path="/games/propaganda-detector" element={<PropagandaDetectorGame />} />
-              <Route path="/games/leader-simulation" element={<LeaderSimulationGame />} />
+                {/* Game Pages */}
+                <Route path="/games/fact-or-fake" element={<FactOrFakeGame />} />
+                <Route path="/games/find-bias" element={<FindBiasGame />} />
+                <Route path="/games/moral-compass" element={<MoralCompassGame />} />
+                <Route path="/games/emoji-debate" element={<EmojiDebateGame />} />
+                <Route path="/games/debate-ai" element={<DebateAi />} />
+                <Route path="/games/misinformation-maze" element={<MisinformationMazeGame />} />
+                <Route path="/games/logical-fallacy-hunt" element={<LogicalFallacyHuntGame />} />
+                <Route path="/games/propaganda-detector" element={<PropagandaDetectorGame />} />
+                <Route path="/games/leader-simulation" element={<LeaderSimulationGame />} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div> {/* Closing the inner wrapper div */}
           </main>
           <Footer />
         </div>
