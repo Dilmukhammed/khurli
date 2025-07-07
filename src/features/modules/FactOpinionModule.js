@@ -261,15 +261,21 @@ export default function FactOpinionModule() {
     const [currentTaskAiContext, setCurrentTaskAiContext] = useState(null); // Added state
     const [completedTasks, setCompletedTasks] = useState({});
     const [progressLoading, setProgressLoading] = useState(true);
+    const [saveFeedback, setSaveFeedback] = useState({}); // To show "Saved!" message
     const { isAuthenticated } = useAuth();
 
     const isTaskCompleted = (taskKey) => !!completedTasks[taskKey];
 
+    // Define discussion task keys array
+    const discussionTaskKeys = ['bTask2', 'iTask1', 'iTask2', 'aTask2'];
+
     useEffect(() => {
-        if (isAuthenticated) {
-            setProgressLoading(true);
-            moduleService.getModuleProgress('fact-opinion')
-                .then(progressData => {
+        const loadProgressAndAnswers = async () => {
+            if (isAuthenticated) {
+                setProgressLoading(true);
+                try {
+                    // Load completion status
+                    const progressData = await moduleService.getModuleProgress('fact-opinion');
                     const initialCompleted = {};
                     if (progressData && Array.isArray(progressData)) {
                         progressData.forEach(item => {
@@ -279,19 +285,42 @@ export default function FactOpinionModule() {
                         });
                     }
                     setCompletedTasks(initialCompleted);
-                })
-                .catch(err => {
+
+                    // Load saved answers for discussion tasks
+                    const loadedAnswers = {};
+                    for (const taskKey of discussionTaskKeys) {
+                        try {
+                            const savedTaskAnswers = await moduleService.getTaskAnswers('fact-opinion', taskKey);
+                            if (savedTaskAnswers) {
+                                loadedAnswers[taskKey] = savedTaskAnswers;
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch saved answers for ${taskKey}:`, err);
+                        }
+                    }
+                    if (Object.keys(loadedAnswers).length > 0) {
+                        setAnswers(prev => ({ ...prev, ...loadedAnswers }));
+                    }
+
+                } catch (err) {
                     console.error("Failed to fetch module progress for fact-opinion:", err);
                     // setProgressError(err.message || "Could not load progress.");
-                })
-                .finally(() => {
+                } finally {
                     setProgressLoading(false);
-                });
-        } else {
-            setCompletedTasks({}); // Clear progress if not authenticated
-            setProgressLoading(false);
-        }
-    }, [isAuthenticated]);
+                }
+            } else {
+                // Clear progress and answers if not authenticated
+                setCompletedTasks({});
+                // Optionally clear local storage if you want a full reset for logged-out users,
+                // or leave it so answers reappear if they log back in.
+                // For now, just clearing component state.
+                setAnswers({}); // Clear answers from component state
+                setProgressLoading(false);
+            }
+        };
+
+        loadProgressAndAnswers();
+    }, [isAuthenticated]); // Removed `answers` from dependency array to avoid re-triggering on setAnswers
 
     const handleAnswerChangeFactOpinion = useCallback((taskKey, itemKey, value) => {
         setAnswers(prev => ({ ...prev, [taskKey]: { ...prev[taskKey], [itemKey]: value } }));
@@ -304,7 +333,10 @@ export default function FactOpinionModule() {
         setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
         setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
 
-        if ((taskKey === 'bTask3' || taskKey === 'aTask1') && dataFromChild.allCorrect) {
+        // Check if dataFromChild exists and has allCorrect property
+        const isCorrect = dataFromChild && dataFromChild.allCorrect;
+
+        if ((taskKey === 'bTask1' || taskKey === 'bTask3' || taskKey === 'aTask1') && isCorrect) {
             if (isAuthenticated && !isTaskCompleted(taskKey)) {
                 moduleService.markTaskAsCompleted('fact-opinion', taskKey)
                     .then(() => {
@@ -315,13 +347,41 @@ export default function FactOpinionModule() {
                         console.error(`Error saving progress for ${taskKey} (fact-opinion):`, err);
                         // Optionally set an error message to display to the user
                     });
-            } else if (!isAuthenticated && dataFromChild.allCorrect) {
+            } else if (!isAuthenticated && isCorrect) {
                 // If not authenticated, still reflect completion visually for the session
                 setCompletedTasks(prev => ({ ...prev, [taskKey]: true }));
                 // Optional: setShowAiButtons(prev => ({ ...prev, [taskKey]: false }));
             }
         }
-    }, [isAuthenticated, completedTasks]);
+        // For other tasks like bTask2, iTask1, etc., that don't have 'allCorrect' from MultipleChoiceTask
+        // but still use handleSubmitFactOpinion (e.g., to show AI button),
+        // this function will just enable the AI button as intended.
+
+        // Save answers for discussion tasks
+        if (discussionTaskKeys.includes(taskKey)) {
+            const taskAnswersToSave = answers[taskKey];
+            if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
+                moduleService.saveTaskAnswers('fact-opinion', taskKey, taskAnswersToSave)
+                    .then(() => {
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 2000); // Clear feedback after 2 seconds
+                    })
+                    .catch(err => {
+                        console.error(`Error saving answers for ${taskKey}:`, err);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 3000); // Clear feedback after 3 seconds
+                    });
+            } else {
+                // If there are no answers to save, maybe briefly indicate nothing was submitted or handle as preferred.
+                // For now, just won't show "Saved!" if there's nothing to save.
+            }
+        }
+
+    }, [isAuthenticated, isTaskCompleted, answers, discussionTaskKeys, t]); // Added t for translations if needed for feedback
 
     const getTaskDetailsForAI_FactOpinion = useCallback((taskKey, additionalData = {}) => {
         // Initialize requestData structure for getGenericAiInteraction
@@ -338,8 +398,8 @@ export default function FactOpinionModule() {
 
         const taskSpecificMainAnswers = answers[taskKey] || {};
 
-        console.log(taskKey)
-        console.log(additionalData)
+        // console.log("Task Key for AI:", taskKey); // Debug log
+        // console.log("Additional Data for AI:", additionalData); // Debug log
         if (taskKey === 'bTask1' || taskKey === 'bTask3' || taskKey === 'aTask1') {
             if (additionalData && additionalData.questionsData) {
                 const { questionsData, userAnswers: childAnswers, optionsData } = additionalData;
@@ -511,8 +571,8 @@ export default function FactOpinionModule() {
 
         const thinkingText = t.aiThinking || 'AI Thinking...';
         const aiErrorText = t.aiError || 'Failed to get AI response.';
-        console.log(userQuery)
-        console.log(taskKey)
+        // console.log("User Query to AI:", userQuery); // Debug log
+        // console.log("Task Key for AI Query:", taskKey); // Debug log
 
         let dataForAiProcessing = initialDataPayload;
         if (userQuery) {
@@ -532,7 +592,7 @@ export default function FactOpinionModule() {
                 requestDetails.userQuery = userQuery;
                 requestDetails.chatMessages = chatMessages
             }
-            console.log(requestDetails)
+            // console.log("Request Details for AI:", requestDetails); // Debug log
             // NEW CALL to the generic service
             const response = await moduleService.getGenericAiInteraction(requestDetails);
 
@@ -566,7 +626,7 @@ export default function FactOpinionModule() {
 
                     <MultipleChoiceTask
                         taskKey="bTask1" // Changed from taskId
-                        title={t.factBTask1Title}
+                        title={<>{t.factBTask1Title} {isTaskCompleted('bTask1') && !progressLoading && <span className='text-green-600 font-bold ml-2 text-sm'>({t.completedText || 'Completed'})</span>}</>}
                         description={t.factBTask1Desc}
                         questions={beginnerTask1Data}
                         lang={lang}
@@ -579,6 +639,7 @@ export default function FactOpinionModule() {
                         showAskAiButton={showAiButtons['bTask1']} // Added
                         isMainAiLoading={isAiLoading} // Added
                         activeAiTaskKey={activeChatTaskKey} // Added
+                        isCompleted={isTaskCompleted('bTask1') || progressLoading} // Added
                     />
                     {currentErrors['bTask1'] && <p className="text-red-500 mt-2 text-sm">{currentErrors['bTask1']}</p>}
                     {activeChatTaskKey === 'bTask1' && (
@@ -627,6 +688,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['bTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['bTask2']}</span>}
                         </div>
                         {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
                             <div>
@@ -721,6 +783,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['iTask1'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask1']}</span>}
                         </div>
                         {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
                             <div>
@@ -778,6 +841,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['iTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask2']}</span>}
                         </div>
                         {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                             <div>
@@ -897,6 +961,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['aTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['aTask2']}</span>}
                         </div>
                         {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
                             <div>

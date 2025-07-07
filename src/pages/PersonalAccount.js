@@ -57,6 +57,7 @@ const PersonalAccount = () => {
       module1Title: "Анализ культурных пословиц",
       module3Title: "Факт или Мнение",
       module2Title: "Обсуждение социальных вопросов (Дебаты)",
+      moduleEthicalDilemmasTitle: "Этические дилеммы и Решение проблем", // Added
       viewAllModulesLink: "Посмотреть все модули",
       recommendationsTitle: "Рекомендации от ИИ",
       recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.",
@@ -83,6 +84,7 @@ const PersonalAccount = () => {
       module1Title: "Analyzing Cultural Proverbs",
       module3Title: "Fact vs. Opinion",
       module2Title: "Debating Social Issues",
+      moduleEthicalDilemmasTitle: "Ethical Dilemmas & Problem Solving", // Added
       viewAllModulesLink: "View All Modules",
       recommendationsTitle: "AI Recommendations",
       recommendation1: "Try the \"Debating\" module to improve your argumentation skills.",
@@ -111,10 +113,62 @@ const PersonalAccount = () => {
       const fetchProgress = async () => {
         setIsLoadingProgress(true);
         try {
+          // Define discussion task keys for each module
+          const moduleDiscussionTasks = {
+            'fact-opinion': ['bTask2', 'iTask1', 'iTask2', 'aTask2'],
+            'debating': ['bTask1', 'bTask3', 'iTask2', 'iTask3', 'aTask2', 'aTask3', 'aTask4'],
+            'cultural-proverbs': [
+                'beginnerTask4',
+                'intermediateTask2',
+                'intermediateTask3',
+                'intermediateTask4',
+                'intermediateTask5',
+                'advancedTask1',
+                'advancedTask2',
+                'advancedTask3',
+                'advancedTask4',
+                'advancedTask5'
+            ],
+            'ethical-dilemmas': [
+                'ethicsBTask1', 'ethicsBTask2', 'ethicsBTask3',
+                'ethicsITask1', 'ethicsITask2',
+                'ethicsATask1', 'ethicsATask2',
+                'problemsBTask1', 'problemsBTask3',
+                'problemsITask1', 'problemsITask3',
+                'problemsATask1', 'problemsATask4'
+            ]
+            // Add other modules and their discussion task keys here
+          };
+
           const progressPromises = moduleDefinitions.map(async (moduleDef) => {
-            const completedTasks = await moduleService.getModuleProgress(moduleDef.id);
-            const completedCount = Array.isArray(completedTasks) ? completedTasks.length : 0;
-            const percentage = moduleDef.totalTasks > 0 ? (completedCount / moduleDef.totalTasks) * 100 : 0;
+            const progressContributingTaskIds = new Set();
+
+            // 1. Get tasks marked as 'completed' from the backend/service
+            try {
+              const completedTaskObjects = await moduleService.getModuleProgress(moduleDef.id);
+              if (Array.isArray(completedTaskObjects)) {
+                completedTaskObjects.forEach(task => progressContributingTaskIds.add(task.task_id));
+              }
+            } catch (e) {
+                console.warn(`Could not fetch completed tasks for ${moduleDef.id}: ${e.message}`);
+            }
+
+            // 2. Check for saved answers for discussion tasks in localStorage
+            const discussionKeysForModule = moduleDiscussionTasks[moduleDef.id] || [];
+            for (const taskKey of discussionKeysForModule) {
+              try {
+                const savedAnswer = await moduleService.getTaskAnswers(moduleDef.id, taskKey);
+                if (savedAnswer) {
+                  progressContributingTaskIds.add(taskKey);
+                }
+              } catch (e) {
+                  console.warn(`Could not check saved answers for ${moduleDef.id}-${taskKey}: ${e.message}`);
+              }
+            }
+
+            const contributingTasksCount = progressContributingTaskIds.size;
+            const percentage = moduleDef.totalTasks > 0 ? (contributingTasksCount / moduleDef.totalTasks) * 100 : 0;
+
             return {
               label: t[moduleDef.translationKey] || moduleDef.id, // Use translated name
               percentage: percentage,
@@ -126,7 +180,6 @@ const PersonalAccount = () => {
         } catch (error) {
           console.error("Failed to fetch module progress:", error);
           // Handle error (e.g., show a message to the user)
-          // For now, userProgressData will remain empty or show stale data if any
         } finally {
           setIsLoadingProgress(false);
         }

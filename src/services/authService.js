@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:8000/api/accounts/'; // Base URL for auth endpoints
+const REACT_APP_API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_URL = `${REACT_APP_API_BASE_URL}/api/accounts/`; // Base URL for auth endpoints
 
 // Function to handle API responses
 const handleResponse = async (response) => {

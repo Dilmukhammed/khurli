@@ -1,6 +1,7 @@
 import authService from './authService'; // To get the auth token
 
-const API_BASE_URL = 'http://localhost:8000/api/modules'; // Base URL for module-related endpoints
+const REACT_APP_API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = `${REACT_APP_API_BASE_URL}/api/modules/`; // Base URL for module-related endpoints
 
 // Function to handle API responses, similar to authService
 const handleResponse = async (response) => {
@@ -82,7 +83,7 @@ const handleResponse = async (response) => {
 // Fetch all progress for a specific module for the current user
 const getModuleProgress = async (moduleId) => {
     let token = authService.getAuthToken(); // Use let as it might be updated
-    console.log('[Debug] Auth Token for Progress (Initial):', token);
+    // console.log('[Debug] Auth Token for Progress (Initial):', token); // Debug log
     if (!token) {
         // This case should ideally not happen if login flow is correct,
         // but if it does, refresh might not be possible or sensible.
@@ -103,11 +104,11 @@ const getModuleProgress = async (moduleId) => {
         return await handleResponse(response);
     } catch (error) {
         if (error.isAuthError && error.statusCode === 401) { // Typically 401 for expired token
-            console.log('Auth error detected (401), attempting token refresh for getModuleProgress...');
+            // console.log('Auth error detected (401), attempting token refresh for getModuleProgress...'); // Debug log
             try {
                 await authService.refreshToken();
                 token = authService.getAuthToken(); // Get the new token
-                console.log('[Debug] Auth Token for Progress (After Refresh):', token);
+                // console.log('[Debug] Auth Token for Progress (After Refresh):', token); // Debug log
                 if (!token) {
                     authService.logout(); // Logout if refresh succeeded but no token found
                     throw new Error('Token refresh seemed to succeed but no new token found. Logging out.');
@@ -116,7 +117,7 @@ const getModuleProgress = async (moduleId) => {
                 // Update Authorization header for the retry
                 requestOptions.headers['Authorization'] = `Bearer ${token}`;
 
-                console.log('Token refreshed, retrying original request for getModuleProgress...');
+                // console.log('Token refreshed, retrying original request for getModuleProgress...'); // Debug log
                 const retryResponse = await fetch(requestUrl, requestOptions);
                 return await handleResponse(retryResponse);
             } catch (refreshError) {
@@ -134,7 +135,7 @@ const getModuleProgress = async (moduleId) => {
 // Mark a specific task within a module as completed for the current user
 const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
     let token = authService.getAuthToken(); // Use let
-    console.log('[Debug] Auth Token for Mark Task (Initial):', token);
+    // console.log('[Debug] Auth Token for Mark Task (Initial):', token); // Debug log
     if (!token) {
         throw new Error('User not authenticated. Cannot save module progress.');
     }
@@ -159,11 +160,11 @@ const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
         return await handleResponse(response);
     } catch (error) {
         if (error.isAuthError && error.statusCode === 401) { // Typically 401
-            console.log('Auth error detected (401), attempting token refresh for markTaskAsCompleted...');
+            // console.log('Auth error detected (401), attempting token refresh for markTaskAsCompleted...'); // Debug log
             try {
                 await authService.refreshToken();
                 token = authService.getAuthToken(); // Get the new token
-                console.log('[Debug] Auth Token for Mark Task (After Refresh):', token);
+                // console.log('[Debug] Auth Token for Mark Task (After Refresh):', token); // Debug log
                  if (!token) {
                     authService.logout();
                     throw new Error('Token refresh seemed to succeed but no new token found. Logging out.');
@@ -171,7 +172,7 @@ const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
 
                 requestOptions.headers['Authorization'] = `Bearer ${token}`;
 
-                console.log('Token refreshed, retrying original request for markTaskAsCompleted...');
+                // console.log('Token refreshed, retrying original request for markTaskAsCompleted...'); // Debug log
                 const retryResponse = await fetch(requestUrl, requestOptions);
                 return await handleResponse(retryResponse);
             } catch (refreshError) {
@@ -192,12 +193,12 @@ const getAiProverbExplanation = async (blockContext, userAnswers, correctAnswers
         // or if token is known to be missing.
         throw new Error('User not authenticated. Cannot fetch AI explanation.');
     }
-    console.log("line 195 block context", blockContext)
-    console.log("useranswer", userAnswers)
-    console.log("correct", correctAnswers)
-    console.log("userquery", userQuery)
-    console.log("chat messages", chatMessages)
-    console.log("interaction", interaction_type)
+    // console.log("line 195 block context", blockContext); // Debug log
+    // console.log("useranswer", userAnswers); // Debug log
+    // console.log("correct", correctAnswers); // Debug log
+    // console.log("userquery", userQuery); // Debug log
+    // console.log("chat messages", chatMessages); // Debug log
+    // console.log("interaction", interaction_type); // Debug log
     const requestUrl = `${API_BASE_URL}/ai/explain-proverb/`; // Note: API_BASE_URL is '/api/modules'
     const requestBody = {
         block_context: blockContext,
@@ -244,8 +245,8 @@ async function getAiDebateDiscussion(block_context, user_answers, userQuery = ''
     }
 
     const requestUrl = `${API_BASE_URL}/ai-debate-discussion/`; // Ensure this matches your Django URL
-    console.log("line 255 module service",block_context )
-    console.log(user_answers)
+    // console.log("line 255 module service block_context:",block_context ); // Debug log
+    // console.log("line 255 module service user_answers:",user_answers); // Debug log
     const requestBody = {
         block_context: block_context,
         user_answers: user_answers || [], // This will be the user's arguments/thoughts
@@ -330,7 +331,7 @@ async function getGenericAiInteraction(requestData) {
         user_query: requestData.userQuery || '',
         chat_history: requestData.chatMessages || [],
     };
-    console.log("MOdule service js BODY: ", body)
+    // console.log("getGenericAiInteraction Request Body: ", body); // Debug log
 
     const requestOptions = {
         method: 'POST',
@@ -358,4 +359,34 @@ export default {
     // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
     getAiDebateDiscussion, // Ensure this is moved before export and included
     getGenericAiInteraction, // To be added
+
+    // Save answers for a specific task (using localStorage for now)
+    saveTaskAnswers: async (moduleId, taskId, answers) => {
+        try {
+            const key = `moduleAnswers-${moduleId}-${taskId}`;
+            localStorage.setItem(key, JSON.stringify(answers));
+            // console.log(`Saved answers for ${moduleId}-${taskId}:`, answers);
+            return Promise.resolve({ success: true, message: "Answers saved locally." });
+        } catch (error) {
+            console.error("Error saving task answers to localStorage:", error);
+            return Promise.reject({ success: false, message: "Failed to save answers locally." });
+        }
+    },
+
+    // Get saved answers for a specific task (from localStorage for now)
+    getTaskAnswers: async (moduleId, taskId) => {
+        try {
+            const key = `moduleAnswers-${moduleId}-${taskId}`;
+            const savedAnswers = localStorage.getItem(key);
+            if (savedAnswers) {
+                // console.log(`Retrieved answers for ${moduleId}-${taskId}:`, JSON.parse(savedAnswers));
+                return Promise.resolve(JSON.parse(savedAnswers));
+            }
+            // console.log(`No saved answers found for ${moduleId}-${taskId}`);
+            return Promise.resolve(null); // Return null if no answers are found
+        } catch (error) {
+            console.error("Error retrieving task answers from localStorage:", error);
+            return Promise.reject(null); // Or handle error as appropriate
+        }
+    },
 };

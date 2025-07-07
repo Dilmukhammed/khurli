@@ -27,16 +27,15 @@ const AiChatWindow = ({ messages, onSendMessage, isLoading, initialMessage }) =>
     };
 
     const handleSend = () => {
-        // =============== ADD THIS LOG ===============
-        console.log('[AiChatWindow] handleSend called. User input:', userInput);
+        // console.log('[AiChatWindow] handleSend called. User input:', userInput);
 
         if (userInput.trim() && onSendMessage && !isLoading) {
-            console.log('[AiChatWindow] Calling onSendMessage with:', userInput.trim()); // Log 2
+            // console.log('[AiChatWindow] Calling onSendMessage with:', userInput.trim());
             onSendMessage(userInput.trim());
             setUserInput('');
         } else {
-            console.log('[AiChatWindow] onSendMessage not called. Conditions not met:',
-                { hasInput: !!userInput.trim(), hasOnSendMessage: !!onSendMessage, isNotLoading: !isLoading });
+            // console.log('[AiChatWindow] onSendMessage not called. Conditions not met:',
+                // { hasInput: !!userInput.trim(), hasOnSendMessage: !!onSendMessage, isNotLoading: !isLoading });
         }
     };
 

@@ -154,7 +154,7 @@ export default function FactOrFakeGame() {
     }, [lang, userAnswers, results]);
 
     const handleAskAI_FactOrFake = useCallback(async (userQuery = '') => {
-        console.log("fact or fake line 157", userQuery)
+        // console.log("fact or fake line 157", userQuery); // Debug log
         if (isAiLoading) return;
         setIsAiLoading(true);
         setActiveChat(true);
@@ -169,7 +169,7 @@ export default function FactOrFakeGame() {
             if (userQuery) {
                 setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
             }
-            console.log("Fact or fake js line 172 ", chatMessages)
+            // console.log("Fact or fake js line 172 ", chatMessages); // Debug log
 
             const response = await moduleService.getGenericAiInteraction({
                 module_id: 'game-fact-or-fake',
@@ -185,9 +185,9 @@ export default function FactOrFakeGame() {
                 ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
                 { "role": 'assistant', "content": response.explanation }
             ]);
-            console.log("fact or fake line 187", chatMessages)
+            // console.log("fact or fake line 187", chatMessages); // Debug log
         } catch (error) {
-            console.error('Error fetching AI for FactOrFakeGame:', error);
+            console.error('Error fetching AI for FactOrFakeGame:', error); // Keep this error log
             const errorMsg = error.message || 'Failed to get AI response.';
             setChatMessages(prev => [
                 ...prev.filter(msg => msg["content"] !== (t.aiThinking || 'Thinking...')),
@@ -197,7 +197,7 @@ export default function FactOrFakeGame() {
         } finally {
             setIsAiLoading(false);
         }
-    }, [isAiLoading, getTaskDetailsForAI_FactOrFake, lang]);
+    }, [isAiLoading, getTaskDetailsForAI_FactOrFake, lang, chatMessages]); // Added chatMessages
     
     // Helper function to get the appropriate CSS class for a result
     const getResultClass = (headlineId) => {
