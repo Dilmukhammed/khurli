@@ -148,6 +148,16 @@ export default function EthicalDilemmasModule() {
     const [chatMessages, setChatMessages] = useState([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [currentErrors, setCurrentErrors] = useState({});
+    const [saveFeedback, setSaveFeedback] = useState({}); // Added for "Saved!" message
+
+    const discussionTaskKeys = [
+        'ethicsBTask1', 'ethicsBTask2', 'ethicsBTask3',
+        'ethicsITask1', 'ethicsITask2',
+        'ethicsATask1', 'ethicsATask2',
+        'problemsBTask1', 'problemsBTask3',
+        'problemsITask1', 'problemsITask3',
+        'problemsATask1', 'problemsATask4'
+    ];
 
     useEffect(() => {
         document.title = translations[lang].pageTitle;
@@ -157,8 +167,28 @@ export default function EthicalDilemmasModule() {
             }
         };
         window.addEventListener('storage', handleStorageChange);
+
+        const loadSavedAnswers = async () => {
+            const loadedAnswers = {};
+            for (const taskKey of discussionTaskKeys) {
+                try {
+                    // Assuming module ID will be 'ethical-dilemmas'
+                    const savedTaskAnswers = await moduleService.getTaskAnswers('ethical-dilemmas', taskKey);
+                    if (savedTaskAnswers) {
+                        loadedAnswers[taskKey] = savedTaskAnswers;
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch saved answers for ${taskKey} in ethical-dilemmas:`, err);
+                }
+            }
+            if (Object.keys(loadedAnswers).length > 0) {
+                setAnswers(prev => ({ ...prev, ...loadedAnswers }));
+            }
+        };
+        loadSavedAnswers();
+
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [lang]);
+    }, [lang]); // discussionTaskKeys is stable, so not needed in deps
 
     const t = translations[lang];
 
@@ -177,7 +207,28 @@ export default function EthicalDilemmasModule() {
     const handleSubmit = useCallback((taskKey) => {
         setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
         setCurrentErrors(prev => ({ ...prev, [taskKey]: null }));
-    }, []);
+
+        // Since all tasks are discussion tasks for this module as per user request
+        if (discussionTaskKeys.includes(taskKey)) {
+            const taskAnswersToSave = answers[taskKey];
+            if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
+                moduleService.saveTaskAnswers('ethical-dilemmas', taskKey, taskAnswersToSave)
+                    .then(() => {
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error(`Error saving answers for ${taskKey} in ethical-dilemmas:`, err);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 3000);
+                    });
+            }
+        }
+    }, [answers, discussionTaskKeys]); // Added answers and discussionTaskKeys to dependencies
 
     // Task Data (with taskKey and question keys added)
     const beginnerEthicsTasks = [
@@ -346,6 +397,7 @@ Your Answer: ${answer}`); // Used q.labelKey directly as it's a key
                 >
                     {"Submit"}
                 </button>
+                {saveFeedback[task.taskKey] && <span className="ml-3 text-sm text-green-600">{saveFeedback[task.taskKey]}</span>}
             </div>
             {showAiButtons[task.taskKey] && !currentErrors[task.taskKey] && (
                 <div>

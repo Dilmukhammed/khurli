@@ -17,6 +17,12 @@ export const moduleDefinitions = [
     totalTasks: 7,  // Adjusted: bTask1, bTask3, iTask2, iTask3, aTask2, aTask3, aTask4 (all discussion)
     colorClass: 'bg-yellow-500',
   },
+  {
+    id: 'ethical-dilemmas',
+    translationKey: 'moduleEthicalDilemmasTitle', // New translation key needed
+    totalTasks: 13, // All 13 tasks are discussion/attemptable
+    colorClass: 'bg-cyan-500', // Example color
+  },
   // Add other modules here if they should be displayed on the PersonalAccount page
 ];
 
