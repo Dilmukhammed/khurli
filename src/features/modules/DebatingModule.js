@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import moduleService from '../../services/moduleService';
 import AiChatWindow from '../../components/common/AiChatWindow';
+import { useAuth } from '../../contexts/AuthContext'; // Assuming path
 
 // --- Reusable UI Components ---
 
@@ -107,6 +108,35 @@ const ProblemSolutionTask = ({ taskData, t, color, taskKey, answers, onAnswerCha
 );
 
 // Part 1: Refactor CaseStudyTask Component
+// Modified ProblemSolutionTask to accept and display feedbackMessage
+const ProblemSolutionTask = ({ taskData, t, color, taskKey, answers, onAnswerChange, onSubmit, disabled, children, feedbackMessage }) => (
+    <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
+        <div className="space-y-4">
+            {taskData.prompts.map(prompt => (
+                 <div key={prompt.id}>
+                    <label htmlFor={prompt.id} className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
+                    <input
+                        type="text"
+                        id={prompt.id}
+                        className="mt-1 w-full border rounded p-2 text-sm"
+                        placeholder={t.yourSolutionPlaceholder}
+                        value={answers[taskKey]?.[prompt.id] || ''}
+                        onChange={(e) => onAnswerChange(taskKey, prompt.id, e.target.value)}
+                        disabled={disabled}
+                    />
+                </div>
+            ))}
+        </div>
+        <div className="flex items-center mt-4"> {/* Added flex container */}
+            <SubmitButton color={color} onClick={onSubmit} disabled={disabled}>
+                {t.submitBtn}
+            </SubmitButton>
+            {feedbackMessage && <span className="ml-3 text-sm text-green-600">{feedbackMessage}</span>}
+        </div>
+        {children}
+    </TaskCard>
+);
+
 const CaseStudyTask = ({ taskData, t, taskKey, answers, onAnswerChange, disabled }) => (
     <div className="space-y-6">
         {taskData.cases.map(caseItem => (
@@ -170,26 +200,50 @@ const AdvancedSelectAndWriteTask = ({ taskData, t, taskKey, answers, onAnswerCha
     );
 };
 
-const CrossCulturalComparisonTask = ({ taskData, t, color }) => (
+const CrossCulturalComparisonTask = ({ taskData, t, color, taskKey, answers, onAnswerChange, onSubmit, disabled, feedbackMessage }) => (
      <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
         <div className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t.chooseIssueToCompare}</label>
-                <select className="mt-1 w-full border rounded p-2 text-sm">
-                    <option>{t.selectOptionDefault}</option>
+                <select
+                    className="mt-1 w-full border rounded p-2 text-sm"
+                    value={answers[taskKey]?.['aTask4_selectedIssue'] || ''}
+                    onChange={(e) => onAnswerChange(taskKey, 'aTask4_selectedIssue', e.target.value)}
+                    disabled={disabled}
+                >
+                    <option value="">{t.selectOptionDefault}</option>
                     {taskData.options.map(opt => <option key={opt.value} value={opt.value}>{t[opt.textKey]}</option>)}
                 </select>
             </div>
             <div>
                  <label className="block text-sm font-medium text-gray-700">{t.countryToCompare}</label>
-                <input type="text" className="mt-1 w-full border rounded p-2 text-sm" placeholder={t.countryToComparePlaceholder} />
+                <input
+                    type="text"
+                    className="mt-1 w-full border rounded p-2 text-sm"
+                    placeholder={t.countryToComparePlaceholder}
+                    value={answers[taskKey]?.['aTask4_countryToCompare'] || ''}
+                    onChange={(e) => onAnswerChange(taskKey, 'aTask4_countryToCompare', e.target.value)}
+                    disabled={disabled}
+                />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t.yourFindingsAndAnalysis}</label>
-                <textarea rows="8" className="mt-1 w-full border rounded p-2 text-sm" placeholder={t.yourAnalysisPlaceholder}></textarea>
+                <textarea
+                    rows="8"
+                    className="mt-1 w-full border rounded p-2 text-sm"
+                    placeholder={t.yourAnalysisPlaceholder}
+                    value={answers[taskKey]?.['aTask4_analysisText'] || ''}
+                    onChange={(e) => onAnswerChange(taskKey, 'aTask4_analysisText', e.target.value)}
+                    disabled={disabled}
+                ></textarea>
             </div>
         </div>
-        <SubmitButton color={color}>{t.submitBtn}</SubmitButton>
+        <div className="flex items-center mt-4">
+            <SubmitButton color={color} onClick={onSubmit} disabled={disabled}>
+                {t.submitBtn}
+            </SubmitButton>
+            {feedbackMessage && <span className="ml-3 text-sm text-green-600">{feedbackMessage}</span>}
+        </div>
      </TaskCard>
 );
 
@@ -202,13 +256,40 @@ const DebatingModule = () => {
     const [chatMessages, setChatMessages] = useState([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [currentErrors, setCurrentErrors] = useState({}); // For displaying errors
+    const [saveFeedback, setSaveFeedback] = useState({}); // To show "Saved!" message
+
+    // Define discussion task keys for this module
+    const discussionTaskKeys = ['bTask1', 'bTask3', 'iTask2', 'iTask3', 'aTask2', 'aTask3', 'aTask4'];
+    const { isAuthenticated } = useAuth(); // Assuming useAuth is available like in FactOpinionModule
 
     useEffect(() => {
         const storedLang = localStorage.getItem('logiclingua-lang') || 'ru';
         setLanguage(storedLang);
-        // document.documentElement.lang = storedLang; // If you set lang attribute on <html>
-        // document.title = t.pageTitle; // If pageTitle is part of your translations
-    }, []); // Removed language from dependency array to avoid potential re-renders if t object is complex
+        // document.documentElement.lang = storedLang;
+        // document.title = t.pageTitle; // Assuming t is available or set another way
+
+        const loadAnswers = async () => {
+            // For now, skipping isAuthenticated check for loading answers from localStorage,
+            // as it's local. If backend integration is added, this will be important.
+            const loadedAnswers = {};
+            for (const taskKey of discussionTaskKeys) {
+                try {
+                    const savedTaskAnswers = await moduleService.getTaskAnswers('debating', taskKey);
+                    if (savedTaskAnswers) {
+                        loadedAnswers[taskKey] = savedTaskAnswers;
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch saved answers for ${taskKey} in debating module:`, err);
+                }
+            }
+            if (Object.keys(loadedAnswers).length > 0) {
+                setAnswers(prev => ({ ...prev, ...loadedAnswers }));
+            }
+        };
+        loadAnswers();
+
+    }, []); // Effect for language and initial answer loading. Re-evaluate dependencies if needed.
+
 
     const t = { // Assuming t object is relatively static or derived correctly based on language state elsewhere if this component re-renders often.
         ru: { 
@@ -402,6 +483,29 @@ const DebatingModule = () => {
     const handleSubmit = (taskKey) => {
         setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
         setCurrentErrors(prev => ({...prev, [taskKey]: null}));
+
+        if (discussionTaskKeys.includes(taskKey)) {
+            const taskAnswersToSave = answers[taskKey];
+            if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
+                moduleService.saveTaskAnswers('debating', taskKey, taskAnswersToSave)
+                    .then(() => {
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 2000); // Clear feedback after 2 seconds
+                    })
+                    .catch(err => {
+                        console.error(`Error saving answers for ${taskKey} in debating module:`, err);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 3000); // Clear feedback after 3 seconds
+                    });
+            } else {
+                // If no answers to save, perhaps provide different feedback or none
+                // For now, no feedback if nothing to save for this task.
+            }
+        }
         // Example: setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t.submissionReceived || 'Your response has been recorded.' }}));
     };
 
@@ -610,6 +714,7 @@ const DebatingModule = () => {
                         <SubmitButton onClick={() => handleSubmit('bTask1')} color="indigo" disabled={isAiLoading}>
                             {t.submitBtn}
                         </SubmitButton>
+                        {saveFeedback['bTask1'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['bTask1']}</span>}
                     </div>
                     {showAiButtons['bTask1'] && !currentErrors['bTask1'] && (
                         <div>
@@ -655,6 +760,7 @@ const DebatingModule = () => {
                     onAnswerChange={handleAnswerChange}
                     onSubmit={() => handleSubmit('bTask3')}
                     disabled={isAiLoading}
+                    feedbackMessage={saveFeedback['bTask3']}
                 >
                     {/* AI Interaction UI for bTask3, to be passed as children */}
                     {showAiButtons['bTask3'] && !currentErrors['bTask3'] && (
@@ -708,6 +814,7 @@ const DebatingModule = () => {
                         <SubmitButton onClick={() => handleSubmit('iTask2')} color="green" disabled={isAiLoading}>
                             {t.submitBtn}
                         </SubmitButton>
+                        {saveFeedback['iTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask2']}</span>}
                     </div>
                     {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                         <div>
@@ -755,6 +862,7 @@ const DebatingModule = () => {
                         <SubmitButton onClick={() => handleSubmit('iTask3')} color="green" disabled={isAiLoading}>
                             {t.submitBtn}
                         </SubmitButton>
+                        {saveFeedback['iTask3'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask3']}</span>}
                     </div>
                     {showAiButtons['iTask3'] && !currentErrors['iTask3'] && (
                         <div>
@@ -809,6 +917,7 @@ const DebatingModule = () => {
                         <SubmitButton onClick={() => handleSubmit('aTask2')} color="red" disabled={isAiLoading}>
                             {t.submitBtn}
                         </SubmitButton>
+                        {saveFeedback['aTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['aTask2']}</span>}
                     </div>
                     {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
                         <div>
@@ -854,6 +963,7 @@ const DebatingModule = () => {
                         <SubmitButton onClick={() => handleSubmit('aTask3')} color="red" disabled={isAiLoading}>
                             {t.submitBtn}
                         </SubmitButton>
+                        {saveFeedback['aTask3'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['aTask3']}</span>}
                     </div>
                     {showAiButtons['aTask3'] && !currentErrors['aTask3'] && (
                         <div>
@@ -883,7 +993,17 @@ const DebatingModule = () => {
                         </div>
                     )}
                 </TaskCard>
-                <CrossCulturalComparisonTask taskData={advancedTasks.crossCultural} t={t} color="red" />
+                <CrossCulturalComparisonTask
+                    taskData={advancedTasks.crossCultural}
+                    t={t}
+                    color="red"
+                    taskKey="aTask4"
+                    answers={answers}
+                    onAnswerChange={handleAnswerChange}
+                    onSubmit={() => handleSubmit('aTask4')}
+                    disabled={isAiLoading}
+                    feedbackMessage={saveFeedback['aTask4']}
+                />
             </LevelSection>
         </div>
     );
