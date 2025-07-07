@@ -167,7 +167,7 @@ const PersonalAccount = () => {
           <DashboardCard>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">{t.progressTitle}</h2>
             <div className="space-y-4">
-              {userProgress.map((item, index) => <ProgressBar key={index} {...item} />)}
+              {userProgressData.map((item, index) => <ProgressBar key={index} {...item} />)}
             </div>
             <Link to="/modules" className="mt-6 inline-block text-indigo-600 hover:text-indigo-800 font-medium text-sm">
               {t.viewAllModulesLink} &rarr;
