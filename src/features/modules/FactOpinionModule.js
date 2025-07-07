@@ -39,16 +39,11 @@ const translations = {
         factITask2Desc: "Вам дано утверждение. Приведите аргументы, является ли оно фактом или мнением.",
         placeholderArguments: "Ваши аргументы...",
         advancedLevel: "Продвинутый уровень – Критическое мышление и оценка предвзятости",
-        factATask1Title: "1. Анализ предвзятых утверждений",
-        factATask1Desc: "Определите, являются ли утверждения нейтральными фактами или предвзятыми мнениями.",
-        neutralFact: "Нейтральный факт",
-        biasedOpinion: "Предвзятое мнение",
-        factATask2Title: "2. Упражнение по проверке фактов",
-        factATask2Desc: "Исследуйте и проверьте следующие утверждения. Укажите, верны ли они (✔️) или неверны (❌), и при необходимости предоставьте краткое пояснение или исправление.",
-        true: "Верно",
-        false: "Неверно",
-        placeholderFactCheck: "Пояснение/Исправление (если неверно)...",
-        completedText: "Выполнено", 
+        factATask1Title: "1. Анализ предвзятых утверждений", factATask1Desc: "Определите, являются ли утверждения нейтральными фактами или предвзятыми мнениями.",
+        neutralFact: "Нейтральный факт", biasedOpinion: "Предвзятое мнение",
+        factATask2Title: "2. Упражнение по проверке фактов", factATask2Desc: "Исследуйте и проверьте следующие утверждения. Укажите, верны ли они (✔️) или неверны (❌), и при необходимости предоставьте краткое пояснение или исправление.",
+        true: "Верно", false: "Неверно", placeholderFactCheck: "Пояснение/Исправление (если неверно)...",
+        completedText: "Выполнено",
     },
     en: {
         pageTitle: "Fact or Opinion",
@@ -83,16 +78,11 @@ const translations = {
         factITask2Desc: "You are given a statement. Argue whether it is a fact or an opinion.",
         placeholderArguments: "Your arguments...",
         advancedLevel: "Advanced Level – Critical Thinking & Evaluating Bias",
-        factATask1Title: "1. Analyzing Biased Statements",
-        factATask1Desc: "Identify whether the statements are neutral facts or biased opinions.",
-        neutralFact: "Neutral Fact",
-        biasedOpinion: "Biased Opinion",
-        factATask2Title: "2. Fact-Checking Exercise",
-        factATask2Desc: "Research and fact-check the following statements. Indicate if they are true (✔️) or false (❌), and provide a brief explanation or correction if false.",
-        true: "True",
-        false: "False",
-        placeholderFactCheck: "Explanation/Correction (if false)...",
-        completedText: "Completed", 
+        factATask1Title: "1. Analyzing Biased Statements", factATask1Desc: "Identify whether the statements are neutral facts or biased opinions.",
+        neutralFact: "Neutral Fact", biasedOpinion: "Biased Opinion",
+        factATask2Title: "2. Fact-Checking Exercise", factATask2Desc: "Research and fact-check the following statements. Indicate if they are true (✔️) or false (❌), and provide a brief explanation or correction if false.",
+        true: "True", false: "False", placeholderFactCheck: "Explanation/Correction (if false)...",
+        completedText: "Completed",
     }
 };
 
@@ -177,17 +167,8 @@ const MultipleChoiceTask = ({ taskKey, questions, lang, title, description, opti
         }
     };
 
-    const getResultClass = (isCorrect) => {
-        if (isCorrect === 'correct') return 'text-green-600 font-bold';
-        if (isCorrect === 'incorrect') return 'text-red-600 font-bold';
-        return '';
-    };
-    
-    const getFeedbackClass = () => {
-        if(feedback === allCorrectMsg) return 'text-green-600';
-        if(feedback === someIncorrectMsg) return 'text-red-600';
-        return '';
-    };
+    const getResultClass = (isCorrect) => isCorrect === 'correct' ? 'text-green-600 font-bold' : (isCorrect === 'incorrect' ? 'text-red-600 font-bold' : '');
+    const getFeedbackClass = () => feedback === allCorrectMsg ? 'text-green-600' : (feedback === someIncorrectMsg ? 'text-red-600' : '');
 
     return (
         <div className="mb-8 p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -259,15 +240,7 @@ export default function FactOpinionModule() {
     // This runs once on mount and anytime 'lang' changes.
     useEffect(() => {
         document.title = translations[lang].pageTitle;
-        
-        // This function handles the storage event.
-        // It allows the component to react if the language is changed in another tab.
-        const handleStorageChange = (event) => {
-            if (event.key === 'logiclingua-lang') {
-                setLang(event.newValue || 'ru');
-            }
-        };
-
+        const handleStorageChange = (event) => { if (event.key === 'logiclingua-lang') setLang(event.newValue || 'ru'); };
         window.addEventListener('storage', handleStorageChange);
 
         // Cleanup function to remove the event listener.
