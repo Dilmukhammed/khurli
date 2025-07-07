@@ -358,4 +358,34 @@ export default {
     // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
     getAiDebateDiscussion, // Ensure this is moved before export and included
     getGenericAiInteraction, // To be added
+
+    // Save answers for a specific task (using localStorage for now)
+    saveTaskAnswers: async (moduleId, taskId, answers) => {
+        try {
+            const key = `moduleAnswers-${moduleId}-${taskId}`;
+            localStorage.setItem(key, JSON.stringify(answers));
+            // console.log(`Saved answers for ${moduleId}-${taskId}:`, answers);
+            return Promise.resolve({ success: true, message: "Answers saved locally." });
+        } catch (error) {
+            console.error("Error saving task answers to localStorage:", error);
+            return Promise.reject({ success: false, message: "Failed to save answers locally." });
+        }
+    },
+
+    // Get saved answers for a specific task (from localStorage for now)
+    getTaskAnswers: async (moduleId, taskId) => {
+        try {
+            const key = `moduleAnswers-${moduleId}-${taskId}`;
+            const savedAnswers = localStorage.getItem(key);
+            if (savedAnswers) {
+                // console.log(`Retrieved answers for ${moduleId}-${taskId}:`, JSON.parse(savedAnswers));
+                return Promise.resolve(JSON.parse(savedAnswers));
+            }
+            // console.log(`No saved answers found for ${moduleId}-${taskId}`);
+            return Promise.resolve(null); // Return null if no answers are found
+        } catch (error) {
+            console.error("Error retrieving task answers from localStorage:", error);
+            return Promise.reject(null); // Or handle error as appropriate
+        }
+    },
 };
