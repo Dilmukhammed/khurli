@@ -43,11 +43,12 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen bg-gray-100 text-gray-800">
           <Header />
-          <main className="flex-grow container mx-auto px-6 py-12 flex flex-col"> {/* Added flex flex-col here */}
-            <Routes>
-              {/* Main Pages */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<Login />} />
+          <main className="flex-grow overflow-y-auto"> {/* Let main scroll, remove container/padding */}
+            <div className="container mx-auto px-6 py-12"> {/* Inner wrapper for container/padding */}
+              <Routes>
+                {/* Main Pages */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route
                 path="/account"
