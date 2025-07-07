@@ -24,6 +24,7 @@ class LibraryItem(models.Model):
         return self.title
 
 def book_upload_path(instance, filename):
+    print(f'library/books/{filename}')
     # file will be uploaded to MEDIA_ROOT/library/books/<filename>
     return f'library/books/{filename}'
 
