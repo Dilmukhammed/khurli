@@ -43,7 +43,7 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen bg-gray-100 text-gray-800">
           <Header />
-          <main className="flex-grow container mx-auto px-6 py-12">
+          <main className="flex-grow container mx-auto px-6 py-12 flex flex-col"> {/* Added flex flex-col here */}
             <Routes>
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
