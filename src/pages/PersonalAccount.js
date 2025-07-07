@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 
 const DashboardCard = ({ children }) => (
-  <div className="bg-white p-6 rounded-xl shadow-md h-full">
+  <div className="bg-white p-6 rounded-xl shadow-md"> {/* Removed h-full */}
     {children}
   </div>
 );
