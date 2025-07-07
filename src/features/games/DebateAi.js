@@ -85,7 +85,7 @@ export default function DebateAiGame() {
                 const requestData = {
                     module_id: 'game-debate-ai',
                     task_id: 'main_debate_turn_1', // Task ID for the first turn
-                    interaction_type: 'game_debate_ai_turn',
+                    interaction_type: 'discuss_open_ended', // Changed interaction_type
                     block_context: `${t.gameInstructions}\nTopic: ${t.topic}\nInitial AI Argument: ${t.ai_argument}`,
                     user_inputs: [initialUserInput], // User's first counter-argument
                     chat_history: currentChatHistory.slice(0, -1), // History before user's current message
@@ -117,7 +117,7 @@ export default function DebateAiGame() {
             const requestData = {
                 module_id: 'game-debate-ai',
                 task_id: 'main_debate_follow_up', // Task ID for follow-up turns
-                interaction_type: 'game_debate_ai_turn',
+                interaction_type: 'discuss_open_ended', // Changed interaction_type
                 block_context: `${t.gameInstructions}\nTopic: ${t.topic}\nInitial AI Argument: ${t.ai_argument}`, // Context can be refined
                 user_inputs: [userQuery], // Current user query
                 chat_history: updatedMessages.slice(0, -1), // History before this new user query
