@@ -2,7 +2,7 @@ export const moduleDefinitions = [
   {
     id: 'cultural-proverbs',
     translationKey: 'module1Title', // Key for translated name in PersonalAccount's translations
-    totalTasks: 10, // Example total tasks
+    totalTasks: 14, // Adjusted: 4 completable + 10 discussion tasks
     colorClass: 'bg-indigo-600',
   },
   {

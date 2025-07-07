@@ -309,18 +309,51 @@ const CulturalProverbsModule = () => {
     const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const [saveFeedback, setSaveFeedback] = useState({}); // Added for "Saved!" message
 
     const { isAuthenticated } = useAuth();
     const [completedTasks, setCompletedTasks] = useState({});
     const [progressLoading, setProgressLoading] = useState(true);
     const [progressError, setProgressError] = useState(null);
 
+    const discussionTaskKeys = [
+        'beginnerTask4',
+        'intermediateTask2',
+        'intermediateTask3',
+        'intermediateTask4',
+        'intermediateTask5',
+        'advancedTask1',
+        'advancedTask2',
+        'advancedTask3',
+        'advancedTask4',
+        'advancedTask5'
+    ];
+
     useEffect(() => {
         const storedLang = localStorage.getItem('logiclingua-lang') || 'ru';
         setLanguage(storedLang);
         document.documentElement.lang = storedLang;
         document.title = translations[storedLang]?.pageTitle || translations['en'].pageTitle;
-    }, []);
+
+        const loadSavedAnswers = async () => {
+            const loadedAnswers = {};
+            for (const taskKey of discussionTaskKeys) {
+                try {
+                    const savedTaskAnswers = await moduleService.getTaskAnswers('cultural-proverbs', taskKey);
+                    if (savedTaskAnswers) {
+                        loadedAnswers[taskKey] = savedTaskAnswers;
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch saved answers for ${taskKey} in cultural-proverbs:`, err);
+                }
+            }
+            if (Object.keys(loadedAnswers).length > 0) {
+                setAnswers(prev => ({ ...prev, ...loadedAnswers }));
+            }
+        };
+        loadSavedAnswers();
+
+    }, []); // Language and initial answer loading
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -654,6 +687,26 @@ const CulturalProverbsModule = () => {
     const handleSubmit = (taskKey) => { // For open-ended tasks
          setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t('submissionReceived') }}));
          setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Explicitly show AI button
+
+        if (discussionTaskKeys.includes(taskKey)) {
+            const taskAnswersToSave = answers[taskKey];
+            if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
+                moduleService.saveTaskAnswers('cultural-proverbs', taskKey, taskAnswersToSave)
+                    .then(() => {
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error(`Error saving answers for ${taskKey} in cultural-proverbs:`, err);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 3000);
+                    });
+            }
+        }
     };
 
     const isTaskCompleted = (taskKey) => completedTasks[taskKey] === 'completed';
@@ -1037,6 +1090,7 @@ const CulturalProverbsModule = () => {
                                 >
                                     {t('submitBtn')}
                                 </button>
+                                {saveFeedback['beginnerTask4'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['beginnerTask4']}</span>}
                                 {results.beginnerTask4 && <div className={`result-message ${results.beginnerTask4.type}`}>{results.beginnerTask4.message}</div>}
                                 {showAiButtons.beginnerTask4 && !isTaskCompleted('beginnerTask4') &&
                                     <button
@@ -1175,6 +1229,7 @@ const CulturalProverbsModule = () => {
                                             </div>
                                         ))]}
                                 <button onClick={() => handleSubmit('intermediateTask2')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask2') || progressLoading}>{t('submitBtn')}</button>
+                                {saveFeedback['intermediateTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['intermediateTask2']}</span>}
                                 {results.intermediateTask2 && <div className={`result-message ${results.intermediateTask2.type}`}>{results.intermediateTask2.message}</div>}
                                 {showAiButtons.intermediateTask2 && !isTaskCompleted('intermediateTask2') &&
                                     <button
@@ -1248,6 +1303,7 @@ const CulturalProverbsModule = () => {
                                 >
                                     {t('submitBtn')}
                                 </button>
+                                {saveFeedback['intermediateTask3'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['intermediateTask3']}</span>}
                                 {results.intermediateTask3 && <div className={`result-message ${results.intermediateTask3.type}`}>{results.intermediateTask3.message}</div>}
                                 {showAiButtons.intermediateTask3 && !isTaskCompleted('intermediateTask3') &&
                                     <button
@@ -1376,6 +1432,7 @@ const CulturalProverbsModule = () => {
                                         ></textarea>
                                 </div>
                                 <button onClick={() => handleSubmit('intermediateTask4')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask4') || progressLoading}>{t('submitBtn')}</button>
+                                {saveFeedback['intermediateTask4'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['intermediateTask4']}</span>}
                                 {results.intermediateTask4 && <div className={`result-message ${results.intermediateTask4.type}`}>{results.intermediateTask4.message}</div>}
                                 {showAiButtons.intermediateTask4 && !isTaskCompleted('intermediateTask4') &&
                                     <button
@@ -1419,6 +1476,7 @@ const CulturalProverbsModule = () => {
                                     disabled={isTaskCompleted('intermediateTask5') || progressLoading}
                                 />
                                 <button onClick={() => handleSubmit('intermediateTask5')} className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300" disabled={isTaskCompleted('intermediateTask5') || progressLoading}>{t('submitBtn')}</button>
+                                {saveFeedback['intermediateTask5'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['intermediateTask5']}</span>}
                                 {results.intermediateTask5 && <div className={`result-message ${results.intermediateTask5.type}`}>{results.intermediateTask5.message}</div>}
                                 {showAiButtons.intermediateTask5 && !isTaskCompleted('intermediateTask5') &&
                                     <button
@@ -1487,6 +1545,7 @@ const CulturalProverbsModule = () => {
                                     className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                     disabled={isTaskCompleted('advancedTask1') || progressLoading}
                                 >{t('submitBtn')}</button>
+                                {saveFeedback['advancedTask1'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['advancedTask1']}</span>}
                                 {results.advancedTask1 && <div className={`result-message ${results.advancedTask1.type}`}>{results.advancedTask1.message}</div>}
                                 {showAiButtons.advancedTask1 && !isTaskCompleted('advancedTask1') &&
                                     <button
@@ -1556,6 +1615,7 @@ const CulturalProverbsModule = () => {
                                     className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                     disabled={isTaskCompleted('advancedTask2') || progressLoading}
                                 >{t('submitBtn')}</button>
+                                {saveFeedback['advancedTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['advancedTask2']}</span>}
                                 {results.advancedTask2 && <div className={`result-message ${results.advancedTask2.type}`}>{results.advancedTask2.message}</div>}
                                 {showAiButtons.advancedTask2 && !isTaskCompleted('advancedTask2') &&
                                     <button
@@ -1613,6 +1673,7 @@ const CulturalProverbsModule = () => {
                                     className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                     disabled={isTaskCompleted('advancedTask3') || progressLoading}
                                 >{t('submitBtn')}</button>
+                                {saveFeedback['advancedTask3'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['advancedTask3']}</span>}
                                 {results.advancedTask3 && <div className={`result-message ${results.advancedTask3.type}`}>{results.advancedTask3.message}</div>}
                                 {showAiButtons.advancedTask3 && !isTaskCompleted('advancedTask3') &&
                                     <button
@@ -1642,19 +1703,72 @@ const CulturalProverbsModule = () => {
 
                             {/* Task 4 */}
                             <div className="mb-6 p-4 border rounded-md task-card bg-white">
-                                <h4 className="font-semibold mb-2">{t('advancedTask4Title')}</h4>
+                                <h4 className="font-semibold mb-2">
+                                    {t('advancedTask4Title')}
+                                    {isTaskCompleted('advancedTask4') && !progressLoading && <span className='completed-text'>{t('completedText')}</span>}
+                                </h4>
                                 <p className="mb-3 text-sm text-gray-600">{t('advancedTask4Desc')}</p>
                                 <p className="italic text-sm text-gray-500 mb-2" dangerouslySetInnerHTML={{ __html: t('advancedTask4Example') }} />
                                 <p className="font-medium mb-2">{t('chooseOne')}</p>
-                                <select className="border rounded px-2 py-1 mb-3 w-full bg-white">
-                                    <option value="">{t('selectOptionDefault')}</option><option value="1">{t('advancedTask4Option1')}</option><option value="2">{t('advancedTask4Option2')}</option><option value="3">{t('advancedTask4Option3')}</option>
+                                <select
+                                    className="border rounded px-2 py-1 mb-3 w-full bg-white"
+                                    value={answers.advancedTask4?.selectedProverb || ''}
+                                    onChange={(e) => handleAnswerChange('advancedTask4', 'selectedProverb', e.target.value)}
+                                    disabled={isTaskCompleted('advancedTask4') || progressLoading}
+                                >
+                                    <option value="">{t('selectOptionDefault')}</option>
+                                    <option value={t('advancedTask4Option1')}>{t('advancedTask4Option1')}</option>
+                                    <option value={t('advancedTask4Option2')}>{t('advancedTask4Option2')}</option>
+                                    <option value={t('advancedTask4Option3')}>{t('advancedTask4Option3')}</option>
                                 </select>
                                 <label className="block text-sm font-medium text-gray-700 mt-2">{t('mediaTitleLabel')}</label>
-                                <input type="text" className="border rounded px-2 py-1 w-full mt-1" placeholder={language === 'ru' ? 'Введите название...' : 'Enter title...'} />
+                                <input
+                                    type="text"
+                                    className="border rounded px-2 py-1 w-full mt-1"
+                                    placeholder={language === 'ru' ? 'Введите название...' : 'Enter title...'}
+                                    value={answers.advancedTask4?.mediaTitle || ''}
+                                    onChange={(e) => handleAnswerChange('advancedTask4', 'mediaTitle', e.target.value)}
+                                    disabled={isTaskCompleted('advancedTask4') || progressLoading}
+                                />
                                 <label className="block text-sm font-medium text-gray-700 mt-2">{t('analysisLabel')}</label>
-                                <textarea className="border rounded px-2 py-1 w-full h-32 mt-1" placeholder={language === 'ru' ? 'Как пословица применима...' : 'How the proverb applies...'}></textarea>
-                                <button onClick={() => handleSubmit('advancedTask4')} className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">{t('submitBtn')}</button>
+                                <textarea
+                                    className="border rounded px-2 py-1 w-full h-32 mt-1"
+                                    placeholder={language === 'ru' ? 'Как пословица применима...' : 'How the proverb applies...'}
+                                    value={answers.advancedTask4?.analysis || ''}
+                                    onChange={(e) => handleAnswerChange('advancedTask4', 'analysis', e.target.value)}
+                                    disabled={isTaskCompleted('advancedTask4') || progressLoading}
+                                ></textarea>
+                                <button
+                                    onClick={() => handleSubmit('advancedTask4')}
+                                    className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                    disabled={isTaskCompleted('advancedTask4') || progressLoading}
+                                >{t('submitBtn')}</button>
+                                {saveFeedback['advancedTask4'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['advancedTask4']}</span>}
                                 {results.advancedTask4 && <div className={`result-message ${results.advancedTask4.type}`}>{results.advancedTask4.message}</div>}
+                                {showAiButtons.advancedTask4 && !isTaskCompleted('advancedTask4') && /* Added AI Button section for consistency */
+                                    <button
+                                        onClick={() => {handleAskAI('advancedTask4'); setChatMessages([])}}
+                                        className="discuss-ai-button mt-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                                        disabled={isAiLoading && activeChatTaskKey === 'advancedTask4'}
+                                    >
+                                        {isAiLoading && activeChatTaskKey === 'advancedTask4' ? 'AI Thinking...' : t('discussAiBtn')}
+                                    </button>
+                                }
+                                {activeChatTaskKey === 'advancedTask4' && (
+                                    <div className="mt-4">
+                                        <AiChatWindow
+                                            messages={chatMessages}
+                                            isLoading={isAiLoading}
+                                            onSendMessage={(message) => handleAskAI('advancedTask4', message)}
+                                        />
+                                        <button
+                                            onClick={() => { setActiveChatTaskKey(null); setChatMessages([]); }}
+                                            className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                        >
+                                            Close AI Chat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Task 5 */}
@@ -1699,6 +1813,7 @@ const CulturalProverbsModule = () => {
                                     className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                     disabled={isTaskCompleted('advancedTask5') || progressLoading}
                                 >{t('submitBtn')}</button>
+                                {saveFeedback['advancedTask5'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['advancedTask5']}</span>}
                                 {results.advancedTask5 && <div className={`result-message ${results.advancedTask5.type}`}>{results.advancedTask5.message}</div>}
                                 {showAiButtons.advancedTask5 && !isTaskCompleted('advancedTask5') &&
                                     <button

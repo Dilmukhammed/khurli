@@ -115,7 +115,18 @@ const PersonalAccount = () => {
           const moduleDiscussionTasks = {
             'fact-opinion': ['bTask2', 'iTask1', 'iTask2', 'aTask2'],
             'debating': ['bTask1', 'bTask3', 'iTask2', 'iTask3', 'aTask2', 'aTask3', 'aTask4'],
-            'cultural-proverbs': [] // Assuming none for now, or add them if they exist
+            'cultural-proverbs': [
+                'beginnerTask4',
+                'intermediateTask2',
+                'intermediateTask3',
+                'intermediateTask4',
+                'intermediateTask5',
+                'advancedTask1',
+                'advancedTask2',
+                'advancedTask3',
+                'advancedTask4',
+                'advancedTask5'
+            ]
             // Add other modules and their discussion task keys here
           };
 
