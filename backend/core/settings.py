@@ -25,8 +25,10 @@ INSTALLED_APPS = [
     'accounts', # Accounts app
     'modules',  # Modules app
     'library',  # New library app
+    'corsheaders',
 ]
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -45,7 +47,8 @@ TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIR
 WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
+CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "https://khurli-8ljz-git-deploy-dilmukhammeds-projects.vercel.app/", "https://khurli-8ljz-f5yhxpduf-dilmukhammeds-projects.vercel.app/"]
 STATIC_URL = 'static/'
 
 # Media files configuration
