@@ -261,6 +261,7 @@ export default function FactOpinionModule() {
     const [currentTaskAiContext, setCurrentTaskAiContext] = useState(null); // Added state
     const [completedTasks, setCompletedTasks] = useState({});
     const [progressLoading, setProgressLoading] = useState(true);
+    const [saveFeedback, setSaveFeedback] = useState({}); // To show "Saved!" message
     const { isAuthenticated } = useAuth();
 
     const isTaskCompleted = (taskKey) => !!completedTasks[taskKey];
@@ -362,15 +363,25 @@ export default function FactOpinionModule() {
             if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
                 moduleService.saveTaskAnswers('fact-opinion', taskKey, taskAnswersToSave)
                     .then(() => {
-                        // console.log(`Answers for ${taskKey} saved.`);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 2000); // Clear feedback after 2 seconds
                     })
                     .catch(err => {
                         console.error(`Error saving answers for ${taskKey}:`, err);
+                        setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        setTimeout(() => {
+                            setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+                        }, 3000); // Clear feedback after 3 seconds
                     });
+            } else {
+                // If there are no answers to save, maybe briefly indicate nothing was submitted or handle as preferred.
+                // For now, just won't show "Saved!" if there's nothing to save.
             }
         }
 
-    }, [isAuthenticated, isTaskCompleted, answers, discussionTaskKeys]); // Added answers and discussionTaskKeys
+    }, [isAuthenticated, isTaskCompleted, answers, discussionTaskKeys, t]); // Added t for translations if needed for feedback
 
     const getTaskDetailsForAI_FactOpinion = useCallback((taskKey, additionalData = {}) => {
         // Initialize requestData structure for getGenericAiInteraction
@@ -677,6 +688,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['bTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['bTask2']}</span>}
                         </div>
                         {showAiButtons['bTask2'] && !currentErrors['bTask2'] && (
                             <div>
@@ -771,6 +783,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['iTask1'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask1']}</span>}
                         </div>
                         {showAiButtons['iTask1'] && !currentErrors['iTask1'] && (
                             <div>
@@ -828,6 +841,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['iTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['iTask2']}</span>}
                         </div>
                         {showAiButtons['iTask2'] && !currentErrors['iTask2'] && (
                             <div>
@@ -947,6 +961,7 @@ export default function FactOpinionModule() {
                             >
                                 {t.submitBtn}
                             </button>
+                            {saveFeedback['aTask2'] && <span className="ml-3 text-sm text-green-600">{saveFeedback['aTask2']}</span>}
                         </div>
                         {showAiButtons['aTask2'] && !currentErrors['aTask2'] && (
                             <div>
