@@ -118,7 +118,8 @@ export default function DebateAiGame() {
                 module_id: 'game-debate-ai',
                 task_id: 'main_debate_follow_up', // Task ID for follow-up turns
                 interaction_type: 'discuss_open_ended', // Changed interaction_type
-                block_context: `${t.gameInstructions}\nTopic: ${t.topic}\nInitial AI Argument: ${t.ai_argument}`, // Context can be refined
+                // Modified block_context for follow-up turns
+                block_context: `Continuing debate on topic: ${t.topic}. Game Instructions: ${t.gameInstructions}. Focus on the ongoing conversation history.`,
                 user_inputs: [userQuery], // Current user query
                 chat_history: updatedMessages.slice(0, -1), // History before this new user query
             };
