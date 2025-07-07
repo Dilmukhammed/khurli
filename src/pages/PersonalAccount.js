@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react'; // Added useState
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import moduleService from '../services/moduleService'; // Import moduleService
+import { moduleDefinitions } from '../config/moduleData'; // Import module definitions
 
 const DashboardCard = ({ children }) => (
   <div className="bg-white p-6 rounded-xl shadow-md"> {/* Removed h-full */}
@@ -12,19 +14,16 @@ const ProgressBar = ({ label, percentage, colorClass = 'bg-indigo-600' }) => (
   <div>
     <div className="flex justify-between mb-1">
       <span className="text-sm font-medium text-gray-700">{label}</span>
-      <span className="text-sm font-medium text-gray-700">{percentage}%</span>
+      <span className="text-sm font-medium text-gray-700">{Math.round(percentage)}%</span> {/* Rounded percentage */}
     </div>
     <div className="w-full bg-gray-200 rounded-full h-2.5">
-      {/* Corrected template literal syntax for className and style */}
-      <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${percentage}%` }}></div>
+      <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${Math.round(percentage)}%` }}></div> {/* Rounded percentage */}
     </div>
   </div>
 );
 
 const Badge = ({ icon, name, description, achieved = true }) => (
-  // Corrected template literal syntax for className
   <div className={`flex items-center p-3 rounded-lg ${achieved ? 'bg-gray-50' : 'bg-gray-200 opacity-60'}`}>
-    {/* Corrected template literal syntax for className */}
     <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 flex-shrink-0 ${achieved ? 'bg-blue-500' : 'bg-gray-400'}`}>
       {icon}
     </div>
@@ -37,7 +36,9 @@ const Badge = ({ icon, name, description, achieved = true }) => (
 
 const PersonalAccount = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading } = useAuth(); // Use AuthContext
+  const { isAuthenticated, user, loading: authLoading } = useAuth(); // Assuming user object is available from useAuth
+  const [userProgressData, setUserProgressData] = useState([]);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
   const language = localStorage.getItem('logiclingua-lang') || 'ru';
 
@@ -58,8 +59,8 @@ const PersonalAccount = () => {
       module2Title: "Обсуждение социальных вопросов (Дебаты)",
       viewAllModulesLink: "Посмотреть все модули",
       recommendationsTitle: "Рекомендации от ИИ",
-      recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.", // Escaped quotes
-      recommendation2: "Сыграйте в \"Охоту на Логические Ошибки\" для практики выявления некорректных доводов.", // Escaped quotes
+      recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.",
+      recommendation2: "Сыграйте в \"Охоту на Логические Ошибки\" для практики выявления некорректных доводов.",
       recommendation3: "Изучите ресурсы по критическому мышлению в нашей библиотеке.",
       gamificationTitle: "Ваши Достижения",
       pointsLabel: "Баллы",
@@ -71,7 +72,8 @@ const PersonalAccount = () => {
       badgeProblemSolverDesc: "Успешное решение 5 кейсов",
       badgeChangemaker: "Создатель перемен",
       badgeLocked: "(Заблокировано)",
-      loadingUser: "Загрузка данных пользователя..."
+      loadingUser: "Загрузка данных пользователя...",
+      loadingProgress: "Загрузка прогресса..."
     },
     en: {
       welcomeUser: "Welcome!",
@@ -83,8 +85,8 @@ const PersonalAccount = () => {
       module2Title: "Debating Social Issues",
       viewAllModulesLink: "View All Modules",
       recommendationsTitle: "AI Recommendations",
-      recommendation1: "Try the \"Debating\" module to improve your argumentation skills.", // Escaped quotes
-      recommendation2: "Play the \"Logical Fallacy Hunt\" game to practice identifying flawed arguments.", // Escaped quotes
+      recommendation1: "Try the \"Debating\" module to improve your argumentation skills.",
+      recommendation2: "Play the \"Logical Fallacy Hunt\" game to practice identifying flawed arguments.",
       recommendation3: "Explore critical thinking resources in our library.",
       gamificationTitle: "Your Achievements",
       pointsLabel: "Points",
@@ -96,19 +98,44 @@ const PersonalAccount = () => {
       badgeProblemSolverDesc: "Successfully solved 5 case studies",
       badgeChangemaker: "Changemaker",
       badgeLocked: "(Locked)",
-      loadingUser: "Loading user data..."
+      loadingUser: "Loading user data...",
+      loadingProgress: "Loading progress..."
     }
   };
 
-  const t = translations[language];
+  const t = translations[language] || translations.en;
 
-  const userProgress = [
-    { label: t.module1Title, percentage: 75, colorClass: 'bg-indigo-600' },
-    { label: t.module3Title, percentage: 100, colorClass: 'bg-green-500' },
-    { label: t.module2Title, percentage: 20, colorClass: 'bg-yellow-500' },
-  ];
 
-  const badges = [
+  useEffect(() => {
+    if (isAuthenticated && user) { // Ensure user is authenticated and user object is available
+      const fetchProgress = async () => {
+        setIsLoadingProgress(true);
+        try {
+          const progressPromises = moduleDefinitions.map(async (moduleDef) => {
+            const completedTasks = await moduleService.getModuleProgress(moduleDef.id);
+            const completedCount = Array.isArray(completedTasks) ? completedTasks.length : 0;
+            const percentage = moduleDef.totalTasks > 0 ? (completedCount / moduleDef.totalTasks) * 100 : 0;
+            return {
+              label: t[moduleDef.translationKey] || moduleDef.id, // Use translated name
+              percentage: percentage,
+              colorClass: moduleDef.colorClass,
+            };
+          });
+          const resolvedProgress = await Promise.all(progressPromises);
+          setUserProgressData(resolvedProgress);
+        } catch (error) {
+          console.error("Failed to fetch module progress:", error);
+          // Handle error (e.g., show a message to the user)
+          // For now, userProgressData will remain empty or show stale data if any
+        } finally {
+          setIsLoadingProgress(false);
+        }
+      };
+      fetchProgress();
+    }
+  }, [isAuthenticated, user, language, t]); // Added language and t to dependency array for translations
+
+  const badges = [ // Badges remain static for now
     { icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>, name: t.badgeCriticalThinker, description: t.badgeCriticalThinkerDesc, achieved: true },
     { icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, name: t.badgeProblemSolver, description: t.badgeProblemSolverDesc, achieved: true },
     { icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>, name: t.badgeChangemaker, description: t.badgeLocked, achieved: false },
