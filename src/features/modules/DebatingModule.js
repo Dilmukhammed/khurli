@@ -80,32 +80,32 @@ const AgreeDisagreeTask = ({ taskData, t, taskKey, answers, onAnswerChange, disa
     </div>
 );
 
-const ProblemSolutionTask = ({ taskData, t, color, taskKey, answers, onAnswerChange, onSubmit, disabled, children }) => (
-    <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
-        <div className="space-y-4">
-            {taskData.prompts.map(prompt => (
-                 <div key={prompt.id}>
-                    <label htmlFor={prompt.id} className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
-                    <input
-                        type="text"
-                        id={prompt.id}
-                        className="mt-1 w-full border rounded p-2 text-sm"
-                        placeholder={t.yourSolutionPlaceholder}
-                        value={answers[taskKey]?.[prompt.id] || ''}
-                        onChange={(e) => onAnswerChange(taskKey, prompt.id, e.target.value)}
-                        disabled={disabled}
-                    />
-                </div>
-            ))}
-        </div>
-        <div>
-            <SubmitButton color={color} onClick={onSubmit} disabled={disabled}>
-                {t.submitBtn}
-            </SubmitButton>
-        </div>
-        {children}
-    </TaskCard>
-);
+// const ProblemSolutionTask = ({ taskData, t, color, taskKey, answers, onAnswerChange, onSubmit, disabled, children }) => (
+//     <TaskCard title={t[taskData.titleKey]} description={t[taskData.descriptionKey]}>
+//         <div className="space-y-4">
+//             {taskData.prompts.map(prompt => (
+//                  <div key={prompt.id}>
+//                     <label htmlFor={prompt.id} className="block text-sm font-medium text-gray-700">{t[prompt.labelKey]}</label>
+//                     <input
+//                         type="text"
+//                         id={prompt.id}
+//                         className="mt-1 w-full border rounded p-2 text-sm"
+//                         placeholder={t.yourSolutionPlaceholder}
+//                         value={answers[taskKey]?.[prompt.id] || ''}
+//                         onChange={(e) => onAnswerChange(taskKey, prompt.id, e.target.value)}
+//                         disabled={disabled}
+//                     />
+//                 </div>
+//             ))}
+//         </div>
+//         <div>
+//             <SubmitButton color={color} onClick={onSubmit} disabled={disabled}>
+//                 {t.submitBtn}
+//             </SubmitButton>
+//         </div>
+//         {children}
+//     </TaskCard>
+// );
 
 // Part 1: Refactor CaseStudyTask Component
 // Modified ProblemSolutionTask to accept and display feedbackMessage
