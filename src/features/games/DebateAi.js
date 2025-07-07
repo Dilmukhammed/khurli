@@ -178,7 +178,7 @@ export default function DebateAiGame() {
                         <label htmlFor="user-argument-input" className="block text-sm font-medium text-gray-700 mb-1">{t.inputLabel}</label>
                         <textarea
                             id="user-argument-input"
-                            value={userInput}
+                            value={initialUserInput}
                             onChange={(e) => setInitialUserInput(e.target.value)}
                             className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md resize-vertical text-sm focus:ring-yellow-500 focus:border-yellow-500"
                             placeholder={t.inputPlaceholder}
