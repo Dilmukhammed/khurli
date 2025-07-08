@@ -472,8 +472,8 @@ export default function FakeNewsAnalysisModule() {
                                     className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
                                     rows="3"
                                     placeholder={t('placeholderExplanation')}
-                                    value={intermediateTask1Answers.h1_exp}
-                                    onChange={(e) => handleIntermediateTask1Change('h1_exp', e.target.value)}
+                                    value={answers.fakeNewsIntermediateTask1?.h1_exp || ''}
+                                    onChange={(e) => handleAnswerChange('fakeNewsIntermediateTask1', 'h1_exp', e.target.value)}
                                 />
                             </div>
                             <div>
@@ -482,13 +482,13 @@ export default function FakeNewsAnalysisModule() {
                                     className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
                                     rows="3"
                                     placeholder={t('placeholderExplanation')}
-                                    value={intermediateTask1Answers.h2_exp}
-                                    onChange={(e) => handleIntermediateTask1Change('h2_exp', e.target.value)}
+                                    value={answers.fakeNewsIntermediateTask1?.h2_exp || ''}
+                                    onChange={(e) => handleAnswerChange('fakeNewsIntermediateTask1', 'h2_exp', e.target.value)}
                                 />
                             </div>
                         </div>
                          <button
-                            onClick={handleSubmitIntermediateTask1}
+                            onClick={() => handleSubmit('fakeNewsIntermediateTask1')}
                             className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                          >
                             {t('submitBtn')}
@@ -497,7 +497,7 @@ export default function FakeNewsAnalysisModule() {
 
                         {showAiButtons['fakeNewsIntermediateTask1'] && (
                             <button
-                                onClick={() => handleAskAI('fakeNewsIntermediateTask1', '', intermediateTask1Answers, {})}
+                                onClick={() => handleAskAI('fakeNewsIntermediateTask1')}
                                 className="discuss-ai-button ml-2 mt-6 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 disabled={isAiLoading && activeChatTaskKey === 'fakeNewsIntermediateTask1'}
                             >
@@ -509,7 +509,7 @@ export default function FakeNewsAnalysisModule() {
                                 <AiChatWindow
                                     messages={chatMessages}
                                     isLoading={isAiLoading}
-                                    onSendMessage={(message) => handleAskAI('fakeNewsIntermediateTask1', message, intermediateTask1Answers, {})}
+                                    onSendMessage={(message) => handleAskAI('fakeNewsIntermediateTask1', message)}
                                 />
                                 <button
                                     onClick={handleCloseChat}
@@ -544,8 +544,8 @@ export default function FakeNewsAnalysisModule() {
                                     id="believable_fake_headline"
                                     className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500"
                                     placeholder={t('placeholderBelievableFake')}
-                                    value={advancedTask1Answers.believable_headline}
-                                    onChange={(e) => handleAdvancedTask1Change('believable_headline', e.target.value)}
+                                    value={answers.fakeNewsAdvancedTask1?.believable_headline || ''}
+                                    onChange={(e) => handleAnswerChange('fakeNewsAdvancedTask1', 'believable_headline', e.target.value)}
                                 />
                             </div>
                             <div>
@@ -555,13 +555,13 @@ export default function FakeNewsAnalysisModule() {
                                     id="exaggerated_fake_headline"
                                     className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500"
                                     placeholder={t('placeholderExaggeratedFake')}
-                                    value={advancedTask1Answers.exaggerated_headline}
-                                    onChange={(e) => handleAdvancedTask1Change('exaggerated_headline', e.target.value)}
+                                    value={answers.fakeNewsAdvancedTask1?.exaggerated_headline || ''}
+                                    onChange={(e) => handleAnswerChange('fakeNewsAdvancedTask1', 'exaggerated_headline', e.target.value)}
                                 />
                             </div>
                         </div>
                         <button
-                            onClick={handleSubmitAdvancedTask1}
+                            onClick={() => handleSubmit('fakeNewsAdvancedTask1')}
                             className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                             {t('submitBtn')}
@@ -570,7 +570,7 @@ export default function FakeNewsAnalysisModule() {
 
                         {showAiButtons['fakeNewsAdvancedTask1'] && (
                             <button
-                                onClick={() => handleAskAI('fakeNewsAdvancedTask1', '', advancedTask1Answers, {})}
+                                onClick={() => handleAskAI('fakeNewsAdvancedTask1')}
                                 className="discuss-ai-button ml-2 mt-6 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 disabled={isAiLoading && activeChatTaskKey === 'fakeNewsAdvancedTask1'}
                             >
@@ -582,7 +582,7 @@ export default function FakeNewsAnalysisModule() {
                                 <AiChatWindow
                                     messages={chatMessages}
                                     isLoading={isAiLoading}
-                                    onSendMessage={(message) => handleAskAI('fakeNewsAdvancedTask1', message, advancedTask1Answers, {})}
+                                    onSendMessage={(message) => handleAskAI('fakeNewsAdvancedTask1', message)}
                                 />
                                 <button
                                     onClick={handleCloseChat}
