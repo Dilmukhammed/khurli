@@ -72,7 +72,7 @@ function App() {
               <Route path="/modules/cultural-proverbs" element={<CulturalProverbsModule />} />
               <Route path="/modules/debating" element={<DebatingModule />} />
               <Route path="/modules/fact-opinion" element={<FactOpinionModule />} />
-              <Route path="/modules/fake-news-analysis" element={<FakeNewsAnalysisModule />} />
+              <Route path="/modules/fake-news" element={<FakeNewsAnalysisModule />} />
               <Route path="/modules/ethical-dilemmas" element={<EthicalDilemmasModule />} />
 
               {/* Game Pages */}

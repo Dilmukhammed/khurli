@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService';
+import AiChatWindow from '../../components/common/AiChatWindow';
 
 // Translations for the Emoji Debate game
 const translations = {
@@ -12,6 +14,7 @@ const translations = {
         discussWithAiButton: "Обсудить с ИИ",
         aiThinking: "ИИ думает...",
         closeAiChatButton: "Закрыть чат",
+        nextStoryButton: "Следующая история",
     },
     en: {
         pageTitle: "Game: Emoji Debate",
@@ -23,6 +26,7 @@ const translations = {
         discussWithAiButton: "Discuss with AI",
         aiThinking: "AI Thinking...",
         closeAiChatButton: "Close AI Chat",
+        nextStoryButton: "Next Story",
     }
 };
 
@@ -37,8 +41,9 @@ const emojiStories = [
 
 export default function EmojiDebateGame() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
-
+    
     // For single story display model
+    const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [currentEmojiStory, setCurrentEmojiStory] = useState(null);
     const [userInterpretation, setUserInterpretation] = useState('');
     const [isInterpretationSubmitted, setIsInterpretationSubmitted] = useState(false);
@@ -46,43 +51,76 @@ export default function EmojiDebateGame() {
     // AI Discussion Chat States
     const [showDiscussAiButton, setShowDiscussAiButton] = useState(false);
     const [activeAiChat, setActiveAiChat] = useState(false);
-    const [aiChatMessages, setAiChatMessages] = useState([]);
+    const [chatMessages, setChatMessages] = useState([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [aiError, setAiError] = useState('');
 
 
+    // Effect for language changes: Resets everything including story index
     useEffect(() => {
         document.title = translations[lang].pageTitle;
-        if (emojiStories.length > 0) {
-            setCurrentEmojiStory(emojiStories[0]);
-        } else {
-            setCurrentEmojiStory(null);
-        }
-        // Reset states on language change
+        setCurrentStoryIndex(0); 
+        // Also reset all interaction states for the first story of the new language
         setUserInterpretation('');
         setIsInterpretationSubmitted(false);
         setShowDiscussAiButton(false);
         setActiveAiChat(false);
-        setAiChatMessages([]);
+        setChatMessages([]);
         setIsAiLoading(false);
         setAiError('');
+    }, [lang]);
 
+    // Effect for currentStoryIndex changes: Sets the current story and resets interaction states for THAT story
+    useEffect(() => {
+        if (emojiStories.length > 0 && currentStoryIndex < emojiStories.length) {
+            setCurrentEmojiStory(emojiStories[currentStoryIndex]);
+        } else {
+            setCurrentEmojiStory(null); 
+        }
+        // Reset states for the new story
+        setUserInterpretation('');
+        setIsInterpretationSubmitted(false);
+        setShowDiscussAiButton(false);
+        setActiveAiChat(false);
+        setChatMessages([]);
+        setIsAiLoading(false);
+        setAiError('');
+    }, [currentStoryIndex, lang]); // lang dependency is kept in case future stories are lang-dependent,
+                                 // though current reset logic in [lang] effect handles full reset for lang change.
+
+    // Effect for storage events
+    useEffect(() => {
         const handleStorageChange = (event) => {
             if (event.key === 'logiclingua-lang') {
                 const newLang = event.newValue || 'ru';
-                setLang(newLang);
+                if (lang !== newLang) { 
+                    setLang(newLang); // This will trigger the [lang] useEffect above
+                }
             }
         };
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [lang]);
+    }, [lang]); // Dependency on lang to re-attach listener if lang state is managed elsewhere too (good practice)
+
+    const handleNextStory = () => {
+        const nextIndex = (currentStoryIndex + 1) % emojiStories.length;
+        setCurrentStoryIndex(nextIndex);
+        // States are already reset by the main useEffect due to currentStoryIndex change.
+        // Explicitly:
+        // setUserInterpretation('');
+        // setIsInterpretationSubmitted(false);
+        // setShowDiscussAiButton(false);
+        // setActiveAiChat(false);
+        // setAiChatMessages([]);
+        // setAiError('');
+    };
 
     const handleSubmitInterpretation = () => {
         if (userInterpretation.trim()) {
             setIsInterpretationSubmitted(true);
             setShowDiscussAiButton(true);
             setActiveAiChat(false);
-            setAiChatMessages([]);
+            setChatMessages([]);
             setAiError('');
         } else {
             alert(translations[lang].interpretationPlaceholder); // Or a more specific message
@@ -104,13 +142,13 @@ export default function EmojiDebateGame() {
             block_context: contextParts.join('\n\n'),
             user_inputs: [`User's Interpretation: "${userInterpretation}"`],
             // TODO: Backend should ideally support 'discuss_emoji_interpretation'. Using 'discuss_open_ended' as fallback.
-            interaction_type: 'discuss_open_ended'
+            interaction_type: 'discuss_open_ended' 
         };
     }, [lang, currentEmojiStory, userInterpretation]);
 
     const handleAskAI_EmojiDebateDiscussion = useCallback(async (userQuery = '') => {
         if (isAiLoading || !currentEmojiStory) return; // Ensure story is loaded
-
+        
         const details = getTaskDetailsForAI_EmojiDebateDiscussion();
         if (!details) {
             setAiError("Could not prepare details for AI discussion.");
@@ -121,36 +159,26 @@ export default function EmojiDebateGame() {
         setActiveAiChat(true);
         setAiError('');
         const t = translations[lang];
-        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
 
-        if (userQuery) {
-            setAiChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
-        }
-        setAiChatMessages(prev => {
-            if (prev.length === 0 || prev[prev.length - 1].content !== thinkingMsg.content) {
-                return [...prev, thinkingMsg];
-            }
-            return prev;
-        });
 
         try {
             const { block_context, user_inputs: initial_user_inputs, interaction_type } = details;
-
-            const messagesForApi = aiChatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
+            
             if (userQuery) {
-                messagesForApi.push({ "role": 'user', "content": userQuery });
+                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
             }
-
+            
             const response = await moduleService.getGenericAiInteraction({
-                module_id: 'game-emoji-debate',
-                task_id: 'discuss_emoji_interpretation',
+                module_id: 'game-emoji-debate', 
+                task_id: 'discuss_emoji_interpretation', 
                 interaction_type,
                 block_context,
-                user_inputs: userQuery ? [userQuery] : initial_user_inputs,
-                chatMessages: messagesForApi,
+                user_inputs: initial_user_inputs,
+                userQuery,
+                chatMessages,
             });
 
-            setAiChatMessages(prev => [
+            setChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
                 { "role": 'assistant', "content": response.explanation }
             ]);
@@ -158,7 +186,7 @@ export default function EmojiDebateGame() {
         } catch (error) {
             console.error('Error fetching AI for Emoji Debate Discussion:', error);
             const errorMsg = error.message || 'Failed to get AI response.';
-            setAiChatMessages(prev => [
+            setChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
                 { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
             ]);
@@ -166,8 +194,8 @@ export default function EmojiDebateGame() {
         } finally {
             setIsAiLoading(false);
         }
-    }, [isAiLoading, currentEmojiStory, aiChatMessages, getTaskDetailsForAI_EmojiDebateDiscussion, lang]); // Added lang
-
+    }, [isAiLoading, currentEmojiStory, chatMessages, getTaskDetailsForAI_EmojiDebateDiscussion, lang]); // Added lang
+    
     const t = translations[lang];
 
     if (!currentEmojiStory) {
@@ -193,7 +221,7 @@ export default function EmojiDebateGame() {
                     {!isInterpretationSubmitted ? (
                         <>
                             <label 
-                                htmlFor="interpretation-input"
+                                htmlFor="interpretation-input" 
                                 className="block text-sm font-medium text-gray-700 mb-1"
                             >
                                 {t.interpretationLabel}
@@ -220,7 +248,7 @@ export default function EmojiDebateGame() {
                             <p className="text-green-800 whitespace-pre-wrap">{userInterpretation}</p>
                         </div>
                     )}
-
+                    
                     {/* "Discuss with AI" Button & Chat Window */}
                     {isInterpretationSubmitted && (
                         <div className="mt-6">
@@ -241,7 +269,7 @@ export default function EmojiDebateGame() {
                             {activeAiChat && (
                                 <div className="mt-4 p-4 border-t border-gray-200">
                                     <AiChatWindow
-                                        messages={aiChatMessages}
+                                        messages={chatMessages}
                                         isLoading={isAiLoading}
                                         onSendMessage={(message) => handleAskAI_EmojiDebateDiscussion(message)}
                                     />
@@ -256,6 +284,16 @@ export default function EmojiDebateGame() {
                                         {t.closeAiChatButton}
                                     </button>
                                 </div>
+                            )}
+
+                            {/* Next Story Button - Appears after submission, and when chat is not active */}
+                            {emojiStories.length > 1 && ( // Only show if there are multiple stories
+                                <button
+                                    onClick={handleNextStory}
+                                    className="mt-6 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300"
+                                >
+                                    {t.nextStoryButton}
+                                </button>
                             )}
                         </div>
                     )}

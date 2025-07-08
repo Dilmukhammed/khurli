@@ -166,6 +166,9 @@ const LibraryPage = () => {
   const sampleVideos = [
     { id: 'vid1', title: { en: 'Casually Explained: Critical Thinking', ru: 'Критическое мышление: Объяснение простыми словами' }, youtubeId: 'qMrnVkDH2Ak' },
     { id: 'vid2', title: { en: 'Critical thinking at the heart of Gen AI literacy', ru: 'Критическое мышление как ключевой навык для освоения генеративного ИИ' }, youtubeId: 'yr0-RLGZshg' },
+    { id: 'vid3', title: { en: 'A neuroscientist’s guide to reclaiming your brain | Nicole Vignola', ru: 'Как вернуть себе мозг: руководство нейробиолога | Николь Виньола' }, youtubeId: 'tcbxIoERm6w' },
+    { id: 'vid4', title: { en: 'Five simple strategies to sharpen your critical thinking | BBC Ideas', ru: 'Как развить критическое мышление: пять простых способов | BBC Ideas' }, youtubeId: 'NHjgKe7JMNE' },
+    { id: 'vid5', title: { en: 'How to Improve Your Critical Thinking Skills', ru: 'Как развить критическое мышление' }, youtubeId: 'JOFrjc6u47U' },
   ];
 
   return (
