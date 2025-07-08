@@ -262,49 +262,66 @@ export default function FakeNewsAnalysisModule() {
         return Object.entries(answerObject).map(([key, value]) => `${key}: ${String(value)}`);
     };
 
-    const getFakeNewsTaskDetailsForAI = (taskKey, currentLang, taskAnswers, taskResults) => {
-        let block_context = "";
-        let user_answers_formatted = [];
-        let correct_answers_formatted = [];
-        let interaction_type = 'explain_mistakes'; // Default for classification
+    // Prepares payload for moduleService.getGenericAiInteraction
+    const getGenericAiPayload = (taskKey, currentLang, taskSpecificAnswers, taskSpecificResults = {}) => {
+        let moduleId = 'fake-news-analysis';
+        let specificTaskId = '';
+        let interaction_type = '';
+        let block_context = '';
+        let user_inputs = []; // Equivalent to user_answers in some contexts
+        let correct_answers_data = []; // For tasks that have them
 
         if (taskKey === 'fakeNewsBeginnerTask1') {
-            block_context = `${t('fakeNewsBTask1Title')}\n${t('fakeNewsBTask1Desc')}\n\n`;
-            block_context += beginnerTask1Data.map(h => `${h[currentLang]} (Your answer: ${taskAnswers?.[h.id] || 'Not answered'}, Correct: ${h.answer})`).join("\n");
+            specificTaskId = 'beginner_task_1';
+            interaction_type = 'explain_mistakes_headlines'; // Specific type for this interaction
 
-            user_answers_formatted = formatAnswersForAI(taskAnswers);
+            block_context = `${t('fakeNewsBTask1Title')}\n${t('fakeNewsBTask1Desc')}\n\nHeadlines:\n`;
+            block_context += beginnerTask1Data.map(h => `- ${h[currentLang]}`).join("\n");
+
+            const formattedUserAnswers = {};
+            beginnerTask1Data.forEach(h => {
+                formattedUserAnswers[h.id] = taskSpecificAnswers?.[h.id] || 'Not answered';
+            });
+            user_inputs = [JSON.stringify(formattedUserAnswers)]; // Send as a JSON string array element
+
             const correctAnswers = {};
             beginnerTask1Data.forEach(h => correctAnswers[h.id] = h.answer);
-            correct_answers_formatted = formatAnswersForAI(correctAnswers);
+            correct_answers_data = [JSON.stringify(correctAnswers)]; // Send as a JSON string array element
+
         } else if (taskKey === 'fakeNewsIntermediateTask1') {
-            interaction_type = 'discuss_open_ended';
-            block_context = `${t('fakeNewsITask1Title')}\n${t('fakeNewsITask1Desc')}\n\n`;
-            block_context += `Headline 1: ${currentLang === 'ru' ? 'Новый закон в Узбекистане требует от всех студентов изучать корейский язык' : 'New Law in Uzbekistan Requires All Students to Learn Korean'}\n`;
-            block_context += `Headline 2: ${currentLang === 'ru' ? 'Ташкент стал первым городом, запретившим смартфоны' : 'Tashkent Becomes the First City to Ban Smartphones'}\n\n`;
+            specificTaskId = 'intermediate_task_1';
+            interaction_type = 'discuss_open_ended_explanations';
 
-            user_answers_formatted = [
-                `Explanation for Headline 1: ${taskAnswers?.h1_exp || '(Not answered)'}`,
-                `Explanation for Headline 2: ${taskAnswers?.h2_exp || '(Not answered)'}`
+            block_context = `${t('fakeNewsITask1Title')}\n${t('fakeNewsITask1Desc')}\n\nHeadlines for explanation:\n`;
+            block_context += `1. ${currentLang === 'ru' ? 'Новый закон в Узбекистане требует от всех студентов изучать корейский язык' : 'New Law in Uzbekistan Requires All Students to Learn Korean'}\n`;
+            block_context += `2. ${currentLang === 'ru' ? 'Ташкент стал первым городом, запретившим смартфоны' : 'Tashkent Becomes the First City to Ban Smartphones'}`;
+
+            user_inputs = [
+                `Explanation for H1: ${taskSpecificAnswers?.h1_exp || '(Not answered)'}`,
+                `Explanation for H2: ${taskSpecificAnswers?.h2_exp || '(Not answered)'}`
             ];
-            correct_answers_formatted = []; // No specific "correct" answers for discussion
+            // No correct_answers_data for this discussion type
+
         } else if (taskKey === 'fakeNewsAdvancedTask1') {
-            interaction_type = 'discuss_open_ended';
-            block_context = `${t('fakeNewsATask1Title')}\n${t('fakeNewsATask1Desc')}\n\n`;
-            block_context += `${t('believableFakeHeadlineLabel')}\n${t('exaggeratedFakeHeadlineLabel')}\n\n`;
+            specificTaskId = 'advanced_task_1';
+            interaction_type = 'discuss_open_ended_creations';
 
-            user_answers_formatted = [
-                `Believable Fake Headline: ${taskAnswers?.believable_headline || '(Not provided)'}`,
-                `Exaggerated Fake Headline: ${taskAnswers?.exaggerated_headline || '(Not provided)'}`
+            block_context = `${t('fakeNewsATask1Title')}\n${t('fakeNewsATask1Desc')}`;
+
+            user_inputs = [
+                `User's Believable Fake Headline: ${taskSpecificAnswers?.believable_headline || '(Not provided)'}`,
+                `User's Exaggerated Fake Headline: ${taskSpecificAnswers?.exaggerated_headline || '(Not provided)'}`
             ];
-            correct_answers_formatted = [];
+            // No correct_answers_data for this discussion type
         }
-        // Add other taskKeys here as needed
 
         return {
-            block_context,
-            user_answers: user_answers_formatted,
-            correct_answers: correct_answers_formatted,
+            module_id: moduleId,
+            task_id: specificTaskId,
             interaction_type,
+            block_context,
+            user_inputs, // This will be mapped to 'user_answers' by getGenericAiInteraction if needed by backend
+            correct_answers_data, // This will be mapped to 'correct_answers'
         };
     };
 
@@ -384,37 +401,31 @@ export default function FakeNewsAnalysisModule() {
 
         // Add "Thinking..." message
         if (userQuery || currentMessages.length === 0 || (currentMessages.length > 0 && currentMessages[currentMessages.length -1].role === 'user') ) {
-            setChatMessages(prev => [...prev, { "role": 'assistant', "content": t('aiThinking') || "Thinking..." }]);
+            // Ensure "Thinking..." is added only once if not already the last message
+            if (currentMessages.length === 0 || currentMessages[currentMessages.length -1].content !== (t('aiThinking') || "Thinking...")) {
+                 setChatMessages(prev => [...prev, { "role": 'assistant', "content": t('aiThinking') || "Thinking..." }]);
+            }
         }
 
-        const { block_context, user_answers, correct_answers, interaction_type } = getFakeNewsTaskDetailsForAI(taskKey, lang, currentTaskAnswers, currentTaskResults);
+        // Prepare payload using the new structure for getGenericAiInteraction
+        const payload = getGenericAiPayload(taskKey, lang, currentTaskAnswers, currentTaskResults);
 
-        if (!block_context) {
-            console.error("[FakeNewsAnalysisModule] Could not get task details for AI. taskKey:", taskKey);
+        if (!payload.block_context && !payload.user_inputs.length) { // Check if payload is minimally valid
+            console.error("[FakeNewsAnalysisModule] Could not get valid payload for AI. taskKey:", taskKey, payload);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.content !== 'Thinking...'), // Ensure Thinking... is handled if used
+                ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
                 { "role": 'assistant', "content": t('aiErrorGetDetails') || "Sorry, I couldn't get the details for this task." }
             ]);
             setIsAiLoading(false);
             return;
         }
 
-        // Add a thinking message if it's a new interaction or query
-        if (userQuery || chatMessages.length === 0 ) {
-             setChatMessages(prev => [...prev, { "role": 'assistant', "content": t('aiThinking') || "Thinking..." }]);
-        }
-
-
         try {
-            // Using a generic endpoint name from moduleService, assuming it's like getAiProverbExplanation
-            const response = await moduleService.getAiExplanation( // Changed from getAiProverbExplanation
-                block_context,
-                user_answers,
-                correct_answers,
-                userQuery,
-                currentMessages.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")), // Send history without "Thinking..."
-                interaction_type
-            );
+            const response = await moduleService.getGenericAiInteraction({
+                ...payload, // Spread the payload from getGenericAiPayload
+                userQuery: userQuery, // Pass userQuery separately as it's handled by handleAskAI
+                chatMessages: currentMessages.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")), // Send history
+            });
             setChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
                 { "role": 'assistant', "content": response.explanation }
