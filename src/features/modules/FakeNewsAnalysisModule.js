@@ -102,23 +102,29 @@ const beginnerTask1Data = [
 
 // Reusable component for the headline classification task
 const HeadlineClassifierTask = ({
-    questions, lang, title, description, options, checkBtnText,
-    allCorrectMsg, someIncorrectMsg, taskKey,
-    // Props from main module
-    answers: mainAnswers,
-    onAnswerChange,
-    onCheckAnswers,
-    t,
-    // Results and validation are passed down to display status
-    validation: mainValidation,
-    results: mainResults
-    // AI Chat window and its trigger button are now rendered in the main module
+    questions,       // Array of question objects
+    lang,            // Current language code (e.g., 'ru', 'en')
+    title,           // Task title string
+    description,     // Task description string
+    options,         // Object mapping option values to translation keys for labels
+    checkBtnText,    // Text for the "Check Answers" button
+    taskKey,         // Unique key for this task (e.g., 'fakeNewsBeginnerTask1')
+
+    // Props from main FakeNewsAnalysisModule state and handlers
+    answers: mainAnswers,         // The slice of answers state for this task (e.g., answers.fakeNewsBeginnerTask1)
+    onAnswerChange,              // Main module's handleAnswerChange(taskKey, itemKey, value)
+    onCheckAnswers,              // Main module's checkBeginnerTask1() or similar
+    t,                           // Main module's translation function
+    validation: mainValidation,   // The slice of validation state for this task
+    results: mainResults          // The slice of results state for this task (contains feedback message)
 }) => {
 
+    // Handles changes to radio button selections locally and calls the parent's handler
     const handleLocalAnswerChange = (questionId, answer) => {
         onAnswerChange(taskKey, questionId, answer);
     };
 
+    // Determines CSS class for styling based on validation status
     const getResultClassBasedOnValidation = (questionId) => {
         const validationStatus = mainValidation?.[questionId];
         if (validationStatus === 'correct') return 'text-green-600 font-bold';
@@ -126,6 +132,7 @@ const HeadlineClassifierTask = ({
         return 'font-medium';
     };
 
+    // Determines CSS class for the overall feedback message
     const getFeedbackClass = () => {
         const resultType = mainResults?.type;
         if(resultType === 'correct') return 'text-green-600';
@@ -160,40 +167,19 @@ const HeadlineClassifierTask = ({
                 ))}
             </div>
              <button
-                onClick={checkAnswers}
+                onClick={onCheckAnswers}
                 className="mt-6 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
                 {checkBtnText}
             </button>
-            {feedback && (
+            {/* Display feedback message from the main module's results state */}
+            {mainResults?.message && (
                 <div className={`result-message mt-3 text-sm font-medium ${getFeedbackClass()}`}>
-                    {feedback}
+                    {mainResults.message}
                 </div>
             )}
-            {shouldShowAskAiButton && (
-                <button
-                    onClick={() => onAskAI(taskKey, answers, results)}
-                    className="ask-ai-button mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
-                    disabled={isAiTaskLoading}
-                >
-                    {isAiTaskLoading ? (translations[lang]?.aiThinking || 'AI Thinking...') : (translations[lang]?.askAiBtn || 'Ask AI')}
-                </button>
-            )}
-            {activeAiTaskKey === taskKey && (
-                <div className="mt-4">
-                    <AiChatWindow
-                        messages={chatMessagesForTask}
-                        isLoading={isAiTaskLoading}
-                        onSendMessage={(message) => onSendChatMessage(taskKey, message, answers, results)}
-                    />
-                    <button
-                        onClick={() => onCloseChat()}
-                        className="mt-2 text-sm text-gray-600 hover:text-gray-800"
-                    >
-                        {translations[lang]?.closeAiChat || 'Close AI Chat'}
-                    </button>
-                </div>
-            )}
+            {/* AI interaction elements (button, chat window) are intentionally NOT rendered here.
+                They are rendered in the parent FakeNewsAnalysisModule. */}
         </div>
     );
 };
@@ -265,6 +251,57 @@ export default function FakeNewsAnalysisModule() {
             }, 2000);
             // Example: moduleService.saveTaskAnswers('fake-news-analysis', taskKey, taskAnswersToSave)...
         }
+    };
+
+    // Generic checkAnswers function for tasks with defined correct answers (e.g., Beginner Task 1)
+    const checkAnswers = (taskKey, correctAnswersMap) => {
+        // if (isTaskCompleted(taskKey) || progressLoading) return; // If progress tracking added
+
+        const userAnswersForTask = answers[taskKey] || {};
+        let newValidation = {};
+        let allCorrect = true;
+        let anyAnswered = false;
+
+        Object.keys(correctAnswersMap).forEach(key => {
+            if (userAnswersForTask[key] !== undefined && String(userAnswersForTask[key]).trim() !== '') {
+                anyAnswered = true;
+                if (String(userAnswersForTask[key]).trim().toLowerCase() === String(correctAnswersMap[key])) {
+                    newValidation[key] = 'correct';
+                } else {
+                    newValidation[key] = 'incorrect';
+                    allCorrect = false;
+                }
+            } else {
+                // If the question is in correctAnswersMap, it's expected to be answered.
+                newValidation[key] = 'missing'; // Or handle as incorrect if partial submission is not allowed
+                allCorrect = false;
+            }
+        });
+
+        setValidation(prev => ({ ...prev, [taskKey]: newValidation }));
+
+        if (!anyAnswered && Object.keys(correctAnswersMap).length > 0) {
+             setResults(prev => ({ ...prev, [taskKey]: { type: 'incorrect', message: t('someIncorrectMessage') } })); // Or a "please answer" message
+             setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Show AI button even if no answers, if desired
+             return;
+        }
+
+        if (allCorrect) {
+            setResults(prev => ({ ...prev, [taskKey]: { type: 'correct', message: t('allCorrectMessage') } }));
+            setShowAiButtons(prev => ({ ...prev, [taskKey]: false })); // Hide AI button if all correct
+            // if (isAuthenticated) { // If progress tracking added
+            //     moduleService.markTaskAsCompleted('fake-news-analysis', taskKey) ...
+            // }
+        } else {
+            setResults(prev => ({ ...prev, [taskKey]: { type: 'incorrect', message: t('someIncorrectMessage') } }));
+            setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Show AI button if incorrect
+        }
+    };
+
+    const checkBeginnerTask1 = () => {
+        const correctAnswers = {};
+        beginnerTask1Data.forEach(q => { correctAnswers[q.id] = q.answer; });
+        checkAnswers('fakeNewsBeginnerTask1', correctAnswers);
     };
 
 
@@ -351,44 +388,54 @@ export default function FakeNewsAnalysisModule() {
 
     const handleAskAI = async (taskKey, userQuery = '') => {
         if (isAiLoading && activeChatTaskKey === taskKey && userQuery === '') {
-             console.log('AI is already loading for this task.');
+             console.log('AI is already loading for this task or an identical request is in progress.');
              return;
         }
 
         setIsAiLoading(true);
         let currentMessages = chatMessages;
 
+        // Reset chat messages if switching tasks or starting a new interaction for the same task without a specific query
         if (!activeChatTaskKey || activeChatTaskKey !== taskKey ) {
             currentMessages = [];
         }
 
+        // Add user's new message to chat history if provided
         if (userQuery) {
             const newUserMessage = { "role": 'user', "content": userQuery };
             currentMessages = [...currentMessages, newUserMessage];
-        } else if (currentMessages.length === 0 && (taskKey === 'fakeNewsIntermediateTask1' || taskKey === 'fakeNewsAdvancedTask1')) {
+        } else if (currentMessages.length === 0 &&
+                   (taskKey === 'fakeNewsIntermediateTask1' || taskKey === 'fakeNewsAdvancedTask1')) {
+            // For discussion tasks, if chat is empty and no specific query, add a default AI prompt
              currentMessages = [{ "role": 'assistant', "content": t('aiDiscussPrompt') || "Let's discuss your response. What would you like to explore further?" }];
         }
 
-        setChatMessages(currentMessages);
-        setActiveChatTaskKey(taskKey);
+        setChatMessages(currentMessages); // Update chat messages state
+        setActiveChatTaskKey(taskKey);   // Set current active task for chat
 
-        if (userQuery || currentMessages.length === 0 || (currentMessages.length > 0 && currentMessages[currentMessages.length -1].role === 'user') ) {
-            if (currentMessages.length === 0 || currentMessages[currentMessages.length -1].content !== (t('aiThinking') || "Thinking...")) {
-                 setChatMessages(prev => [...prev, { "role": 'assistant', "content": t('aiThinking') || "Thinking..." }]);
+        // Add "Thinking..." message to UI if AI is about to process
+        // Ensure it's added only once if not already the last message or if chat was empty
+        const thinkingMessage = t('aiThinking') || "Thinking...";
+        if (userQuery || currentMessages.length === 0 || (currentMessages.length > 0 && currentMessages[currentMessages.length -1].content !== thinkingMessage && currentMessages[currentMessages.length-1].role === 'user') ) {
+            // Avoid adding multiple "Thinking..." messages if one is already there from a previous quick interaction
+            if (currentMessages.length === 0 || currentMessages[currentMessages.length -1].content !== thinkingMessage) {
+                 setChatMessages(prev => [...prev, { "role": 'assistant', "content": thinkingMessage }]);
             }
         }
 
+        // Get task-specific details for the AI
         const {
             block_context,
-            user_answers: user_answers_for_ai, // Renaming to avoid conflict with component's 'answers' state
+            user_answers: user_answers_for_ai,
             correct_answers: correct_answers_for_ai,
             interaction_type
-        } = getTaskDetailsForAI_FakeNews(taskKey);
+        } = getTaskDetailsForAI_FakeNews(taskKey); // This function sources answers from the main 'answers' state
 
+        // Validate that necessary details were retrieved
         if (interaction_type === "error" || !block_context) {
             console.error("[FakeNewsAnalysisModule] Could not get valid task details for AI. taskKey:", taskKey);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
+                ...prev.filter(msg => msg.content !== thinkingMessage), // Remove "Thinking..."
                 { "role": 'assistant', "content": t('aiErrorGetDetails') || "Sorry, I couldn't get the details for this task." }
             ]);
             setIsAiLoading(false);
@@ -396,23 +443,34 @@ export default function FakeNewsAnalysisModule() {
         }
 
         try {
-            const response = await moduleService.getGenericAiInteraction({
-                ...payload, // Spread the payload from getGenericAiPayload
-                userQuery: userQuery, // Pass userQuery separately as it's handled by handleAskAI
-                chatMessages: currentMessages.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")), // Send history
-            });
+            // Construct the object for the service call directly
+            const aiServicePayload = {
+                module_id: 'fake-news-analysis',
+                task_id: taskKey, // Using taskKey as a general identifier; backend might need more specific mapping
+                interaction_type,
+                block_context,
+                user_inputs: user_answers_for_ai,       // Ensure service expects 'user_inputs'
+                correct_answers_data: correct_answers_for_ai, // Ensure service expects 'correct_answers_data'
+                userQuery: userQuery, // The specific query from user for this interaction (if any)
+                chatMessages: currentMessages.filter(msg => msg.content !== thinkingMessage), // Pass history without "Thinking..."
+            };
+
+            // Call the AI service
+            const response = await moduleService.getGenericAiInteraction(aiServicePayload); // Pass the constructed object
+
+            // Update chat with AI's response, removing "Thinking..." first
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
+                ...prev.filter(msg => msg.content !== thinkingMessage),
                 { "role": 'assistant', "content": response.explanation }
             ]);
         } catch (error) {
             console.error('[FakeNewsAnalysisModule] Error fetching AI explanation:', error);
             setChatMessages(prev => [
-                ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
+                ...prev.filter(msg => msg.content !== thinkingMessage), // Remove "Thinking..."
                 { "role": 'assistant', "content": `${t('aiErrorEncountered') || 'Sorry, I encountered an error:'} ${error.message}` }
             ]);
         } finally {
-            setIsAiLoading(false);
+            setIsAiLoading(false); // Reset loading state
         }
     };
 
@@ -439,16 +497,38 @@ export default function FakeNewsAnalysisModule() {
                         description={t('fakeNewsBTask1Desc')}
                         options={{ believable_false: 'believableFalse', exaggerated_fake: 'exaggeratedFake' }}
                         checkBtnText={t('checkAnswersBtn')}
-                        allCorrectMsg={t('allCorrectMessage')}
-                        someIncorrectMsg={t('someIncorrectMessage')}
-                        onAskAI={(taskKey, currentAnswers, currentResults) => handleAskAI(taskKey, '', currentAnswers, currentResults)}
-                        showAiButtonForTask={true} // Initially true, HeadlineClassifierTask will manage based on results
-                        isAiTaskLoading={isAiLoading && activeChatTaskKey === "fakeNewsBeginnerTask1"}
-                        activeAiTaskKey={activeChatTaskKey}
-                        chatMessagesForTask={activeChatTaskKey === "fakeNewsBeginnerTask1" ? chatMessages : []}
-                        onSendChatMessage={(taskKey, message, currentAnswers, currentResults) => handleAskAI(taskKey, message, currentAnswers, currentResults)}
-                        onCloseChat={handleCloseChat}
+                        answers={answers.fakeNewsBeginnerTask1 || {}}
+                        onAnswerChange={handleAnswerChange}
+                        onCheckAnswers={checkBeginnerTask1}
+                        t={t}
+                        validation={validation.fakeNewsBeginnerTask1 || {}}
+                        results={results.fakeNewsBeginnerTask1 || {}}
                     />
+                    {/* AI Button and Chat Window for Beginner Task 1, part of FakeNewsAnalysisModule JSX */}
+                    {showAiButtons.fakeNewsBeginnerTask1 && (
+                        <button
+                            onClick={() => handleAskAI('fakeNewsBeginnerTask1')}
+                            className="ask-ai-button mt-4 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
+                            disabled={isAiLoading && activeChatTaskKey === 'fakeNewsBeginnerTask1'}
+                        >
+                            {isAiLoading && activeChatTaskKey === 'fakeNewsBeginnerTask1' ? t('aiThinking') : t('askAiBtn')}
+                        </button>
+                    )}
+                    {activeChatTaskKey === 'fakeNewsBeginnerTask1' && (
+                        <div className="mt-4">
+                            <AiChatWindow
+                                messages={chatMessages}
+                                isLoading={isAiLoading}
+                                onSendMessage={(message) => handleAskAI('fakeNewsBeginnerTask1', message)}
+                            />
+                            <button
+                                onClick={handleCloseChat}
+                                className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                {t('closeAiChat')}
+                            </button>
+                        </div>
+                    )}
                      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-lg font-semibold mb-2">{t('discussionQuestionsTitle')}</h4>
                         <ul className="list-disc list-inside text-sm text-gray-700 space-y-2">
@@ -494,6 +574,8 @@ export default function FakeNewsAnalysisModule() {
                             {t('submitBtn')}
                         </button>
                         {saveFeedback['fakeNewsIntermediateTask1'] && <span className="ml-3 text-sm text-blue-600">{saveFeedback['fakeNewsIntermediateTask1']}</span>}
+                        {results.fakeNewsIntermediateTask1 && results.fakeNewsIntermediateTask1.type === 'submitted' && <div className="result-message submitted mt-2">{results.fakeNewsIntermediateTask1.message}</div>}
+
 
                         {showAiButtons['fakeNewsIntermediateTask1'] && (
                             <button
@@ -501,7 +583,7 @@ export default function FakeNewsAnalysisModule() {
                                 className="discuss-ai-button ml-2 mt-6 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 disabled={isAiLoading && activeChatTaskKey === 'fakeNewsIntermediateTask1'}
                             >
-                                {isAiLoading && activeChatTaskKey === 'fakeNewsIntermediateTask1' ? (t('aiThinking') || 'AI Thinking...') : (t('discussAiBtn') || 'Discuss with AI')}
+                                {isAiLoading && activeChatTaskKey === 'fakeNewsIntermediateTask1' ? (t('aiThinking')) : (t('discussAiBtn'))}
                             </button>
                         )}
                         {activeChatTaskKey === 'fakeNewsIntermediateTask1' && (
@@ -515,7 +597,7 @@ export default function FakeNewsAnalysisModule() {
                                     onClick={handleCloseChat}
                                     className="mt-2 text-sm text-gray-600 hover:text-gray-800"
                                 >
-                                    {t('closeAiChat') || 'Close AI Chat'}
+                                    {t('closeAiChat')}
                                 </button>
                             </div>
                         )}
@@ -567,6 +649,8 @@ export default function FakeNewsAnalysisModule() {
                             {t('submitBtn')}
                         </button>
                         {saveFeedback['fakeNewsAdvancedTask1'] && <span className="ml-3 text-sm text-blue-600">{saveFeedback['fakeNewsAdvancedTask1']}</span>}
+                        {results.fakeNewsAdvancedTask1 && results.fakeNewsAdvancedTask1.type === 'submitted' && <div className="result-message submitted mt-2">{results.fakeNewsAdvancedTask1.message}</div>}
+
 
                         {showAiButtons['fakeNewsAdvancedTask1'] && (
                             <button
@@ -574,7 +658,7 @@ export default function FakeNewsAnalysisModule() {
                                 className="discuss-ai-button ml-2 mt-6 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300"
                                 disabled={isAiLoading && activeChatTaskKey === 'fakeNewsAdvancedTask1'}
                             >
-                                {isAiLoading && activeChatTaskKey === 'fakeNewsAdvancedTask1' ? (t('aiThinking') || 'AI Thinking...') : (t('discussAiBtn') || 'Discuss with AI')}
+                                {isAiLoading && activeChatTaskKey === 'fakeNewsAdvancedTask1' ? (t('aiThinking')) : (t('discussAiBtn'))}
                             </button>
                         )}
                         {activeChatTaskKey === 'fakeNewsAdvancedTask1' && (
@@ -588,7 +672,7 @@ export default function FakeNewsAnalysisModule() {
                                     onClick={handleCloseChat}
                                     className="mt-2 text-sm text-gray-600 hover:text-gray-800"
                                 >
-                                    {t('closeAiChat') || 'Close AI Chat'}
+                                    {t('closeAiChat')}
                                 </button>
                             </div>
                         )}
