@@ -51,7 +51,7 @@ export default function DebateAiGame() {
     // AI Discussion Chat States (post-submission)
     const [showDiscussAiButton, setShowDiscussAiButton] = useState(false);
     const [activeAiChat, setActiveAiChat] = useState(false);
-    const [chatMessages, setChatMessages] = useState([]);
+    const [aiChatMessages, setAiChatMessages] = useState([]);
 
     // General Loading and Error states (can be shared by initial submission if it involved AI, but here it's for the discussion part)
     const [isAiLoading, setIsAiLoading] = useState(false);
@@ -67,7 +67,7 @@ export default function DebateAiGame() {
         setIsUserArgumentSubmitted(false);
         setShowDiscussAiButton(false);
         setActiveAiChat(false);
-        setChatMessages([]);
+        setAiChatMessages([]);
         setIsAiLoading(false);
         setAiError('');
 
@@ -113,14 +113,27 @@ export default function DebateAiGame() {
         setActiveAiChat(true);
         setAiError('');
         const t = gameData[lang]; // For "AI Thinking..." message
-        
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
+
+        // Add user query to chat messages if it exists
+        if (userQuery) {
+            setAiChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+        }
+        // Add thinking message
+        setAiChatMessages(prev => {
+            if (prev.length === 0 || prev[prev.length -1].content !== thinkingMsg.content) {
+                 return [...prev, thinkingMsg];
+            }
+            return prev;
+        });
 
         try {
             const { block_context, user_inputs: initial_user_inputs, interaction_type } = getTaskDetailsForAI_DebateDiscussion();
 
             // Filter out "Thinking..." for API call
+            const messagesForApi = aiChatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
             if (userQuery) { // Ensure current userQuery is part of messagesForApi
-                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+                messagesForApi.push({ "role": 'user', "content": userQuery });
             }
 
             const response = await moduleService.getGenericAiInteraction({
@@ -128,12 +141,11 @@ export default function DebateAiGame() {
                 task_id: 'discuss_user_statement', // Task ID for this discussion phase
                 interaction_type, // This will be 'discuss_debate_summary' or placeholder
                 block_context,
-                user_inputs: initial_user_inputs, // If userQuery is present, it's the main input, else use context from getTaskDetails
-                userQuery, 
-                chatMessages
+                user_inputs: userQuery ? [userQuery] : initial_user_inputs, // If userQuery is present, it's the main input, else use context from getTaskDetails
+                chatMessages: messagesForApi,
             });
 
-            setChatMessages(prev => [
+            setAiChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
                 { "role": 'assistant', "content": response.explanation }
             ]);
@@ -141,7 +153,7 @@ export default function DebateAiGame() {
         } catch (error) {
             console.error('Error fetching AI for Debate Discussion:', error);
             const errorMsg = error.message || 'Failed to get AI response.';
-            setChatMessages(prev => [
+            setAiChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
                 { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
             ]);
@@ -149,7 +161,7 @@ export default function DebateAiGame() {
         } finally {
             setIsAiLoading(false);
         }
-    }, [isAiLoading, getTaskDetailsForAI_DebateDiscussion, lang, chatMessages, userCounterArgument]);
+    }, [isAiLoading, getTaskDetailsForAI_DebateDiscussion, lang, aiChatMessages, userCounterArgument]);
 
 
     const handleSubmitCounterArgument = () => {
@@ -158,7 +170,7 @@ export default function DebateAiGame() {
             setShowDiscussAiButton(true);
             // Reset chat states for new discussion
             setActiveAiChat(false);
-            setChatMessages([]);
+            setAiChatMessages([]);
             setAiError('');
         } else {
             // Consider using a more integrated notification system if available, instead of alert.
@@ -233,7 +245,7 @@ export default function DebateAiGame() {
                         {activeAiChat && (
                             <div className="mt-6 p-4 border-t border-gray-200">
                                 <AiChatWindow
-                                    messages={chatMessages}
+                                    messages={aiChatMessages}
                                     isLoading={isAiLoading}
                                     onSendMessage={(message) => handleAskAIDebateDiscussion(message)}
                                 />
