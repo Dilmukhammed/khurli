@@ -170,7 +170,8 @@ export default function MisinformationMazeGame() {
         return {
             block_context: contextParts.join('\n'),
             user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
-            interaction_type: 'discuss_game_misinformation_maze'
+            // TODO: Change this back to 'discuss_game_misinformation_maze' once backend supports it.
+            interaction_type: 'discuss_game_find_bias'
         };
     }, [lang, userAnswers, results]);
 
