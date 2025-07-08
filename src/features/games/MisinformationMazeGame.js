@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService';
+import AiChatWindow from '../../components/common/AiChatWindow';
 
 // Translations and game data for the Misinformation Maze game
 const gameData = {
@@ -27,7 +29,10 @@ const gameData = {
         statement4_text: "Технопарк является крупнейшим в мире.",
         statement4_correction: "Утверждение о 'крупнейшем в мире' скорее всего является преувеличением, характерным для дезинформации.",
         statement5_text: "Основным инвестором проекта является Google.",
-        statement5_correction: "Информация об инвесторе Google вымышлена для этого примера."
+        statement5_correction: "Информация об инвесторе Google вымышлена для этого примера.",
+        askAiButton: "Спросить ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChatButton: "Закрыть чат",
     },
     en: {
         pageTitle: "Game: Misinformation Maze",
@@ -54,7 +59,10 @@ const gameData = {
         statement4_text: "The tech park is the largest in the world.",
         statement4_correction: "The claim of 'largest in the world' is likely an exaggeration typical of misinformation.",
         statement5_text: "The main investor in the project is Google.",
-        statement5_correction: "The information about Google being the investor is fictional for this example."
+        statement5_correction: "The information about Google being the investor is fictional for this example.",
+        askAiButton: "Ask AI",
+        aiThinking: "AI Thinking...",
+        closeAiChatButton: "Close AI Chat",
     }
 };
 
@@ -71,6 +79,11 @@ export default function MisinformationMazeGame() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
     const [userAnswers, setUserAnswers] = useState({});
     const [results, setResults] = useState({ feedback: '', score: null, details: {} });
+    const [showMainAiButton, setShowMainAiButton] = useState(false);
+    const [activeChat, setActiveChat] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [currentError, setCurrentError] = useState('');
 
     useEffect(() => {
         const t = gameData[lang];
@@ -113,7 +126,110 @@ export default function MisinformationMazeGame() {
                 details: newResultDetails
             });
         }
+        setShowMainAiButton(true);
+        setActiveChat(false);
+        setChatMessages([]);
+        setCurrentError('');
     };
+
+    const getTaskDetailsForAI_MisinformationMaze = useCallback(() => {
+        const t = gameData[lang];
+        const contextParts = [
+            `Game: ${t.gameTitle}`,
+            `Instructions: ${t.gameInstructions}`,
+            `Article Title: ${t.articleTitle}`,
+            `Article Content: "${t.articleContent}"`,
+            "Statements presented to the user for verification:"
+        ];
+        gameStatements.forEach((stmt, index) => {
+            contextParts.push(`${index + 1}. "${t[stmt.text_key]}"`);
+        });
+
+        const userAnswersFormatted = gameStatements.map((stmt, index) => {
+            const userAnswerRaw = userAnswers[stmt.id];
+            const userAnswerText = userAnswerRaw === 'true' ? t.optionTrue : (userAnswerRaw === 'false' ? t.optionFalse : 'Not answered');
+            // Assuming user corrections are stored in a similar way to answers, e.g., userCorrections[stmt.id]
+            // For now, let's assume corrections are not directly passed or are part of a general user query if they want to discuss a specific correction.
+            // Or, if corrections are input directly in the UI and stored, they could be added here.
+            // For this initial implementation, we'll focus on the true/false answers.
+            const correctAnswerText = stmt.correct ? t.optionTrue : t.optionFalse;
+            const isCorrect = (userAnswerRaw === 'true' && stmt.correct) || (userAnswerRaw === 'false' && !stmt.correct) ? 'Correct' : 'Incorrect';
+
+            let statementDetail = `Statement ${index + 1} ("${t[stmt.text_key].substring(0, 50)}..."): You answered '${userAnswerText}'. Correct was '${correctAnswerText}'. (${isCorrect})`;
+            if (userAnswerRaw === 'false' && userAnswers[`${stmt.id}_correction`]) { // Assuming correction is stored with id + "_correction"
+                statementDetail += ` Your correction: "${userAnswers[`${stmt.id}_correction`]}"`;
+            }
+            return statementDetail;
+        }).join('\n');
+
+        let resultsSummary = "User has not checked answers yet.";
+        if (results && results.feedback) {
+            resultsSummary = `User's results: ${results.feedback}`;
+        }
+
+        return {
+            block_context: contextParts.join('\n'),
+            user_inputs: [userAnswersFormatted, `Results Summary: ${resultsSummary}`],
+            interaction_type: 'discuss_game_misinformation_maze'
+        };
+    }, [lang, userAnswers, results]);
+
+    const handleAskAI_MisinformationMaze = useCallback(async (userQuery = '') => {
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+        setActiveChat(true);
+        setCurrentError('');
+        const t = gameData[lang];
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
+
+        // Add user query to chat messages if it exists
+        if (userQuery) {
+            setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+        }
+        // Add thinking message only if it's not already the last message (or if chat is empty)
+        setChatMessages(prev => {
+            if (prev.length === 0 || prev[prev.length - 1].content !== thinkingMsg.content) {
+                return [...prev, thinkingMsg];
+            }
+            return prev;
+        });
+
+        try {
+            const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_MisinformationMaze();
+
+            // Filter out any existing "Thinking..." message before sending to API
+            const messagesForApi = chatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
+            if (userQuery) { // ensure current userQuery is part of messagesForApi if not added before
+                messagesForApi.push({ "role": 'user', "content": userQuery });
+            }
+
+
+            const response = await moduleService.getGenericAiInteraction({
+                module_id: 'game-misinformation-maze', // Specific module ID for this game
+                task_id: 'main_game', // Specific task ID
+                interaction_type,
+                block_context,
+                user_inputs,
+                userQuery, // Send the current user query separately as well
+                chatMessages: messagesForApi, // Send the filtered chat history
+            });
+
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": response.explanation }
+            ]);
+        } catch (error) {
+            console.error('Error fetching AI for MisinformationMazeGame:', error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setChatMessages(prev => [
+                ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setCurrentError(errorMsg);
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [isAiLoading, getTaskDetailsForAI_MisinformationMaze, lang, chatMessages]); // Added chatMessages to dependencies
 
     const t = gameData[lang];
 
@@ -173,6 +289,46 @@ export default function MisinformationMazeGame() {
                 {results.feedback && (
                     <div className={`mt-6 text-center text-lg font-semibold ${results.score === gameStatements.length ? 'text-emerald-600' : 'text-red-600'}`}>
                         {results.feedback}
+                    </div>
+                )}
+
+                {showMainAiButton && !currentError && (
+                    <div className="mt-4"> {/* Wrapper for Ask AI button */}
+                        <button
+                            onClick={() => handleAskAI_MisinformationMaze()} // Call with no initial query to get initial discussion
+                            disabled={isAiLoading}
+                            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                        >
+                            {t.askAiButton}
+                        </button>
+                    </div>
+                )}
+
+                {/* Display currentError if it exists and chat is not active, or if AI button itself failed */}
+                {currentError && !activeChat && (
+                    <p className="mt-4 text-center text-red-600">{currentError}</p>
+                )}
+
+                {activeChat && (
+                    <div className="mt-6 p-4 border-t border-gray-200">
+                        <AiChatWindow
+                            messages={chatMessages}
+                            isLoading={isAiLoading}
+                            onSendMessage={(message) => handleAskAI_MisinformationMaze(message)}
+                        />
+                        {/* Display error within chat window if it occurs during an active chat */}
+                        {currentError && <p className="mt-2 text-sm text-red-500">{`Error: ${currentError}`}</p>}
+                        <button
+                            onClick={() => {
+                                setActiveChat(false);
+                                // Optionally clear chat messages and error when chat is closed:
+                                // setChatMessages([]); // Decide if chat history should persist or clear
+                                // setCurrentError(''); // Clear error when closing chat
+                            }}
+                            className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            {t.closeAiChatButton}
+                        </button>
                     </div>
                 )}
             </div>
