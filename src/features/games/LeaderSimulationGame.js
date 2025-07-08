@@ -98,24 +98,13 @@ export default function LeaderSimulationGame() {
         setActiveChat(true);
         setCurrentError('');
         const t = gameData[lang];
-        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
 
-        if (userQuery) {
-            setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
-        }
-        setChatMessages(prev => { // Add thinking message
-            if (prev.length === 0 || prev[prev.length - 1].content !== thinkingMsg.content) {
-                return [...prev, thinkingMsg];
-            }
-            return prev;
-        });
 
         try {
             const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_LeaderSimulation();
 
-            const messagesForApi = chatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
             if (userQuery) {
-                messagesForApi.push({ "role": 'user', "content": userQuery });
+                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
             }
 
             const response = await moduleService.getGenericAiInteraction({
@@ -125,7 +114,7 @@ export default function LeaderSimulationGame() {
                 block_context,
                 user_inputs,
                 userQuery,
-                chatMessages: messagesForApi,
+                chatMessages
             });
 
             setChatMessages(prev => [

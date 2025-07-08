@@ -181,27 +181,13 @@ export default function MisinformationMazeGame() {
         setActiveChat(true);
         setCurrentError('');
         const t = gameData[lang];
-        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
-
-        // Add user query to chat messages if it exists
-        if (userQuery) {
-            setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
-        }
-        // Add thinking message only if it's not already the last message (or if chat is empty)
-        setChatMessages(prev => {
-            if (prev.length === 0 || prev[prev.length - 1].content !== thinkingMsg.content) {
-                return [...prev, thinkingMsg];
-            }
-            return prev;
-        });
-
+        
         try {
             const { block_context, user_inputs, interaction_type } = getTaskDetailsForAI_MisinformationMaze();
 
             // Filter out any existing "Thinking..." message before sending to API
-            const messagesForApi = chatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
             if (userQuery) { // ensure current userQuery is part of messagesForApi if not added before
-                messagesForApi.push({ "role": 'user', "content": userQuery });
+                setChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
             }
 
 
@@ -212,7 +198,7 @@ export default function MisinformationMazeGame() {
                 block_context,
                 user_inputs,
                 userQuery, // Send the current user query separately as well
-                chatMessages: messagesForApi, // Send the filtered chat history
+                chatMessages, // Send the filtered chat history
             });
 
             setChatMessages(prev => [
