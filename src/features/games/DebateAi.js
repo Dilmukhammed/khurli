@@ -16,7 +16,10 @@ const gameData = {
         submitButton: "Отправить аргумент",
         topic: "Онлайн-образование полностью заменит традиционное обучение в университетах в ближайшие 10 лет.",
         ai_argument: "Онлайн-образование более гибкое, доступное и часто дешевле. С развитием технологий виртуальной реальности и интерактивных платформ оно сможет обеспечить даже более качественный опыт, чем очное обучение.",
-        ai_response: "Спасибо за ваш аргумент. Вы поднимаете важные вопросы о ценности личного взаимодействия и практического опыта. Действительно, полное замещение маловероятно, но гибридные модели могут стать доминирующими."
+        ai_response: "Спасибо за ваш аргумент. Вы поднимаете важные вопросы о ценности личного взаимодействия и практического опыта. Действительно, полное замещение маловероятно, но гибридные модели могут стать доминирующими.",
+        discussWithAiButton: "Обсудить с ИИ",
+        aiThinking: "ИИ думает...",
+        closeAiChatButton: "Закрыть чат",
     },
     en: {
         pageTitle: "Game: Debate with AI",
@@ -30,119 +33,151 @@ const gameData = {
         submitButton: "Submit Argument",
         topic: "Online education will completely replace traditional university learning in the next 10 years.",
         ai_argument: "Online education is more flexible, accessible, and often cheaper. With advancements in VR and interactive platforms, it can provide an even better experience than in-person learning.",
-        ai_response: "Thank you for your argument. You raise important points about the value of personal interaction and practical experience. Indeed, complete replacement is unlikely, but hybrid models may become dominant."
+        ai_response: "Thank you for your argument. You raise important points about the value of personal interaction and practical experience. Indeed, complete replacement is unlikely, but hybrid models may become dominant.",
+        discussWithAiButton: "Discuss with AI",
+        aiThinking: "AI Thinking...",
+        closeAiChatButton: "Close AI Chat",
     }
 };
 
 export default function DebateAiGame() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
-    // State to manage the conversation messages
-    const [messages, setMessages] = useState([]); // Will store { role: 'user'/'assistant', content: string }
-    // State for the user's current input (for the initial argument)
-    const [initialUserInput, setInitialUserInput] = useState('');
-    // State to control if the user has submitted their initial argument
-    const [hasSubmittedInitial, setHasSubmittedInitial] = useState(false);
-    // AI Loading and error states
+
+    // User's single main counter-argument
+    const [userCounterArgument, setUserCounterArgument] = useState('');
+    // Has the user submitted their main counter-argument?
+    const [isUserArgumentSubmitted, setIsUserArgumentSubmitted] = useState(false);
+
+    // AI Discussion Chat States (post-submission)
+    const [showDiscussAiButton, setShowDiscussAiButton] = useState(false);
+    const [activeAiChat, setActiveAiChat] = useState(false);
+    const [aiChatMessages, setAiChatMessages] = useState([]);
+
+    // General Loading and Error states (can be shared by initial submission if it involved AI, but here it's for the discussion part)
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [aiError, setAiError] = useState('');
-
 
     // Effect to initialize or reset the game on language change
     useEffect(() => {
         const t = gameData[lang];
         document.title = t.pageTitle;
-        // Initialize messages with AI's first argument
-        setMessages([
-            { role: 'assistant', content: t.ai_argument } // name property removed, role/content used
-        ]);
-        setInitialUserInput('');
-        setHasSubmittedInitial(false);
+
+        // Reset game state on language change
+        setUserCounterArgument('');
+        setIsUserArgumentSubmitted(false);
+        setShowDiscussAiButton(false);
+        setActiveAiChat(false);
+        setAiChatMessages([]);
         setIsAiLoading(false);
         setAiError('');
 
         const handleStorageChange = (event) => {
             if (event.key === 'logiclingua-lang') {
-                setLang(event.newValue || 'ru');
-                // Optionally, reset messages and other states here if a full language switch should restart the game
+                const newLang = event.newValue || 'ru';
+                setLang(newLang);
+                // Game state is reset above based on `lang` dependency
             }
         };
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
     }, [lang]);
 
-    const handleInitialSubmit = async () => {
-        if (initialUserInput.trim() && !hasSubmittedInitial) {
-            const t = gameData[lang];
-            const userMessage = { role: 'user', content: initialUserInput };
-            const currentChatHistory = [...messages, userMessage];
-            setMessages(currentChatHistory);
-            setHasSubmittedInitial(true); // Prevents resubmitting initial argument
-            setInitialUserInput(''); // Clear the initial input textarea
-            setIsAiLoading(true);
-            setAiError('');
+    // Placeholder for new logic, to be filled in subsequent steps
+    // const handleSubmitCounterArgument = () => { ... };
+    // const getTaskDetailsForAI_DebateDiscussion = useCallback(() => { ... }, [lang, userCounterArgument]);
+    // const handleAskAIDebateDiscussion = useCallback(async (userQuery = '') => { ... }, [isAiLoading, getTaskDetailsForAI_DebateDiscussion, lang, aiChatMessages]);
 
-            try {
-                const requestData = {
-                    module_id: 'game-debate-ai',
-                    task_id: 'main_debate_turn_1', // Task ID for the first turn
-                    // TODO: Backend should ideally support 'debate_user_first_response'. Using 'discuss_open_ended' as fallback.
-                    interaction_type: 'discuss_open_ended',
-                    block_context: `${t.gameInstructions}\nTopic: ${t.topic}\nInitial AI Argument: ${t.ai_argument}`,
-                    user_inputs: [initialUserInput], // User's first counter-argument
-                    chat_history: currentChatHistory.slice(0, -1), // History before user's current message
-                };
-                const response = await moduleService.getGenericAiInteraction(requestData);
-                setMessages(prev => [...prev, { role: 'assistant', content: response.explanation }]);
-            } catch (error) {
-                console.error("Error getting AI response for initial debate argument:", error);
-                setAiError(error.message || "Failed to get AI response.");
-                // Optionally add an error message to chat
-                setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || "Failed to get AI response."}` }]);
-            } finally {
-                setIsAiLoading(false);
-            }
-        }
-    };
-
-    const handleSendMessageToAI = async (userQuery) => {
-        if (userQuery.trim() === '' || isAiLoading) return;
-
+    const getTaskDetailsForAI_DebateDiscussion = useCallback(() => {
         const t = gameData[lang];
-        const newUserMessage = { role: 'user', content: userQuery };
-        const updatedMessages = [...messages, newUserMessage];
-        setMessages(updatedMessages);
+        const contextParts = [
+            `Game: ${t.gameTitle}`,
+            `Instructions: ${t.gameInstructions}`,
+            `Debate Topic: ${t.topic}`,
+            `AI's Initial Argument: "${t.ai_argument}"`,
+            `User's Counter-Argument: "${userCounterArgument}"`
+        ];
+
+        return {
+            block_context: contextParts.join('\n\n'),
+            // user_inputs could be the user's counter-argument again, or just rely on block_context and chat history for discussion
+            user_inputs: [`User's Counter-Argument: "${userCounterArgument}"`],
+            // TODO: Backend should ideally support a specific type like 'discuss_debate_summary' for this phase.
+            // Using 'discuss_open_ended' (original fallback for this game file) for now.
+            interaction_type: 'discuss_open_ended'
+        };
+    }, [lang, userCounterArgument]); // Removed gameData from deps as it's not reactive state/prop
+
+    const handleAskAIDebateDiscussion = useCallback(async (userQuery = '') => {
+        if (isAiLoading) return;
         setIsAiLoading(true);
+        setActiveAiChat(true);
         setAiError('');
+        const t = gameData[lang]; // For "AI Thinking..." message
+        const thinkingMsg = { "role": 'assistant', "content": t.aiThinking || 'Thinking...' };
+
+        // Add user query to chat messages if it exists
+        if (userQuery) {
+            setAiChatMessages(prev => [...prev, { "role": 'user', "content": userQuery }]);
+        }
+        // Add thinking message
+        setAiChatMessages(prev => {
+            if (prev.length === 0 || prev[prev.length -1].content !== thinkingMsg.content) {
+                 return [...prev, thinkingMsg];
+            }
+            return prev;
+        });
 
         try {
-            const requestData = {
+            const { block_context, user_inputs: initial_user_inputs, interaction_type } = getTaskDetailsForAI_DebateDiscussion();
+
+            // Filter out "Thinking..." for API call
+            const messagesForApi = aiChatMessages.filter(msg => msg.content !== (t.aiThinking || 'Thinking...'));
+            if (userQuery) { // Ensure current userQuery is part of messagesForApi
+                messagesForApi.push({ "role": 'user', "content": userQuery });
+            }
+
+            const response = await moduleService.getGenericAiInteraction({
                 module_id: 'game-debate-ai',
-                task_id: 'main_debate_follow_up', // Task ID for follow-up turns
-                // TODO: Backend should ideally support 'debate_user_follow_up'. Using 'discuss_open_ended' as fallback.
-                interaction_type: 'discuss_open_ended',
-                // Modified block_context for follow-up turns
-                    block_context: `Continuing debate on topic: ${t.topic}. Focus on the ongoing conversation history.`,
-                user_inputs: [userQuery], // Current user query
-                chat_history: updatedMessages.slice(0, -1), // History before this new user query
-            };
-            const response = await moduleService.getGenericAiInteraction(requestData);
-            setMessages(prev => [...prev, { role: 'assistant', content: response.explanation }]);
+                task_id: 'discuss_user_statement', // Task ID for this discussion phase
+                interaction_type, // This will be 'discuss_debate_summary' or placeholder
+                block_context,
+                user_inputs: userQuery ? [userQuery] : initial_user_inputs, // If userQuery is present, it's the main input, else use context from getTaskDetails
+                chatMessages: messagesForApi,
+            });
+
+            setAiChatMessages(prev => [
+                ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": response.explanation }
+            ]);
+
         } catch (error) {
-            console.error("Error getting AI response for debate follow-up:", error);
-            setAiError(error.message || "Failed to get AI response.");
-            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || "Failed to get AI response."}` }]);
+            console.error('Error fetching AI for Debate Discussion:', error);
+            const errorMsg = error.message || 'Failed to get AI response.';
+            setAiChatMessages(prev => [
+                ...prev.filter(msg => msg.content !== (t.aiThinking || 'Thinking...')),
+                { "role": 'assistant', "content": `Sorry, I encountered an error: ${errorMsg}` }
+            ]);
+            setAiError(errorMsg);
         } finally {
             setIsAiLoading(false);
         }
-    };
-    
-    // Automatically scroll to the latest message (This useEffect can be removed if AiChatWindow handles its own scrolling)
-    useEffect(() => {
-        const chatArea = document.getElementById('chat-area');
-        if (chatArea) {
-            chatArea.scrollTop = chatArea.scrollHeight;
+    }, [isAiLoading, getTaskDetailsForAI_DebateDiscussion, lang, aiChatMessages, userCounterArgument]);
+
+
+    const handleSubmitCounterArgument = () => {
+        if (userCounterArgument.trim()) {
+            setIsUserArgumentSubmitted(true);
+            setShowDiscussAiButton(true);
+            // Reset chat states for new discussion
+            setActiveAiChat(false);
+            setAiChatMessages([]);
+            setAiError('');
+        } else {
+            // Consider using a more integrated notification system if available, instead of alert.
+            // For now, alert is based on the previous structure.
+            alert(gameData[lang].inputPlaceholder); // Access gameData directly as 't' might not be in scope here
         }
-    }, [messages]);
+    };
 
     const t = gameData[lang];
 
@@ -157,54 +192,81 @@ export default function DebateAiGame() {
                     <p className="text-indigo-600 font-medium">{t.topic}</p>
                 </div>
 
-                {/* Display area for initial AI argument and user's first response before chat window takes over */}
-                <div id="initial-exchange-area" className="space-y-4 flex flex-col mb-4">
-                    {messages.slice(0, hasSubmittedInitial ? 2 : 1).map((msg, index) => (
-                        <div
-                            key={`initial-${index}`}
-                            className={`chat-bubble py-3 px-4 rounded-xl max-w-[80%] ${
-                                msg.role === 'assistant'
-                                ? 'bg-indigo-100 text-indigo-800 self-start rounded-bl-sm'
-                                : 'bg-green-100 text-green-800 self-end rounded-br-sm'
-                            }`}
-                        >
-                            <strong className="font-semibold">{msg.role === 'assistant' ? t.aiName : t.userName}:</strong>
-                            <p className="mt-1 whitespace-pre-wrap">{msg.content}</p>
-                        </div>
-                    ))}
+                {/* Display AI's initial argument */}
+                <div className="mb-6 p-4 border border-indigo-200 rounded-lg bg-indigo-50">
+                    <h3 className="text-md font-semibold text-indigo-700 mb-1">{t.aiName}'s Initial Argument:</h3>
+                    <p className="text-indigo-800 whitespace-pre-wrap">{t.ai_argument}</p>
                 </div>
 
-                {aiError && <p className="text-red-500 text-sm text-center my-2">{aiError}</p>}
+                {aiError && !activeAiChat && <p className="text-red-500 text-sm text-center my-2">{aiError}</p>}
 
-                {!hasSubmittedInitial ? (
-                    <div id="user-initial-input-area" className="mt-6">
-                        <label htmlFor="user-argument-input" className="block text-sm font-medium text-gray-700 mb-1">{t.inputLabel}</label>
+                {!isUserArgumentSubmitted ? (
+                    <div id="user-counter-argument-area" className="mt-6">
+                        <label htmlFor="user-counter-argument-input" className="block text-sm font-medium text-gray-700 mb-1">{t.inputLabel}</label>
                         <textarea
-                            id="user-argument-input"
-                            value={initialUserInput}
-                            onChange={(e) => setInitialUserInput(e.target.value)}
-                            className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md resize-vertical text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                            id="user-counter-argument-input"
+                            value={userCounterArgument}
+                            onChange={(e) => setUserCounterArgument(e.target.value)}
+                            className="w-full min-h-[150px] p-3 border border-gray-300 rounded-md resize-vertical text-sm focus:ring-yellow-500 focus:border-yellow-500"
                             placeholder={t.inputPlaceholder}
-                            disabled={isAiLoading}
                         />
                         <button
-                            onClick={handleInitialSubmit}
+                            onClick={handleSubmitCounterArgument} // To be implemented fully in next step
                             className="mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 disabled:opacity-50"
-                            disabled={isAiLoading || !initialUserInput.trim()}
+                            disabled={!userCounterArgument.trim()}
                         >
-                            {isAiLoading ? t.aiThinking : t.submitButton}
+                            {t.submitButton}
                         </button>
                     </div>
                 ) : (
-                    <div id="ai-chat-window-area" className="mt-6">
-                        <AiChatWindow
-                            messages={messages.slice(1)} // Pass history after AI's initial argument
-                            isLoading={isAiLoading}
-                            onSendMessage={handleSendMessageToAI}
-                            // Optional: Pass custom translations if AiChatWindow supports them
-                        />
+                    // This area will show the user's submitted argument and then the "Discuss with AI" button / AI Chat Window
+                    <div className="mt-6">
+                        <div className="mb-4 p-4 border border-green-200 rounded-lg bg-green-50">
+                            <h3 className="text-md font-semibold text-green-700 mb-1">Your Counter-Argument:</h3>
+                            <p className="text-green-800 whitespace-pre-wrap">{userCounterArgument}</p>
+                        </div>
+
+                        {/* "Discuss with AI" button appears if argument submitted, no active chat, and no critical error preventing discussion */}
+                        {showDiscussAiButton && !activeAiChat && !aiError && (
+                            <button
+                                onClick={() => handleAskAIDebateDiscussion()} // Initial call to start discussion
+                                disabled={isAiLoading}
+                                className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                            >
+                                {t.discussWithAiButton}
+                            </button>
+                        )}
+                        {/* Display general AI error if discussion button was shown but failed, and chat is not active */}
+                        {showDiscussAiButton && aiError && !activeAiChat && (
+                            <p className="mt-4 text-center text-red-600">{aiError}</p>
+                        )}
+
+                        {/* AI Chat Window for discussion phase */}
+                        {activeAiChat && (
+                            <div className="mt-6 p-4 border-t border-gray-200">
+                                <AiChatWindow
+                                    messages={aiChatMessages}
+                                    isLoading={isAiLoading}
+                                    onSendMessage={(message) => handleAskAIDebateDiscussion(message)}
+                                />
+                                {/* Display error within chat window if it occurs during an active chat */}
+                                {aiError && <p className="mt-2 text-sm text-red-500">{`Error: ${aiError}`}</p>}
+                                <button
+                                    onClick={() => {
+                                        setActiveAiChat(false);
+                                        // Optionally clear chat messages and error when chat is closed:
+                                        // setAiChatMessages([]);
+                                        // setAiError('');
+                                    }}
+                                    className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                                >
+                                    {t.closeAiChatButton}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
+                 {/* Error display specifically for AI chat window issues, if any, can be placed inside the activeAiChat block later */}
             </div>
         </main>
     );
