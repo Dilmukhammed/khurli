@@ -131,6 +131,43 @@ const getModuleProgress = async (moduleId) => {
     }
 };
 
+// Function to get AI explanation (generic version for Fake News module, etc.)
+const getAiExplanation = async (blockContext, userAnswers, correctAnswers = [], userQuery = '', chatMessages = [], interaction_type = "") => {
+    let token = authService.getAuthToken();
+    if (!token) {
+        throw new Error('User not authenticated. Cannot fetch AI explanation.');
+    }
+
+    const requestUrl = `${API_BASE_URL}/ai/explain-general/`; // Endpoint for general explanations
+    const requestBody = {
+        block_context: blockContext,
+        user_answers: userAnswers,
+        correct_answers: correctAnswers,
+        user_query: userQuery,
+        chat_history: chatMessages,
+        interaction_type: interaction_type
+    };
+
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+    };
+
+    try {
+        const response = await fetch(requestUrl, requestOptions);
+        return await handleResponse(response);
+    } catch (error) {
+        // Token refresh logic could be added here if this endpoint requires it frequently.
+        // For now, relying on handleResponse's existing behavior.
+        console.error('Error in getAiExplanation:', error);
+        throw error;
+    }
+};
+
 // Mark a specific task within a module as completed for the current user
 const markTaskAsCompleted = async (moduleId, taskId, status = 'completed') => {
     let token = authService.getAuthToken(); // Use let
@@ -355,6 +392,7 @@ export default {
     getModuleProgress,
     markTaskAsCompleted,
     getAiProverbExplanation,
+    getAiExplanation,
     // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
     getAiDebateDiscussion, // Ensure this is moved before export and included
     getGenericAiInteraction, // To be added
