@@ -103,71 +103,35 @@ const beginnerTask1Data = [
 // Reusable component for the headline classification task
 const HeadlineClassifierTask = ({
     questions, lang, title, description, options, checkBtnText,
-    allCorrectMsg, someIncorrectMsg, taskKey, onAskAI,
-    showAiButtonForTask, isAiTaskLoading, activeAiTaskKey,
-    chatMessagesForTask, onSendChatMessage, onCloseChat
+    allCorrectMsg, someIncorrectMsg, taskKey,
+    // Props from main module
+    answers: mainAnswers,
+    onAnswerChange,
+    onCheckAnswers,
+    t,
+    // Results and validation are passed down to display status
+    validation: mainValidation,
+    results: mainResults
+    // AI Chat window and its trigger button are now rendered in the main module
 }) => {
-    const [answers, setAnswers] = useState({});
-    const [results, setResults] = useState({});
-    const [feedback, setFeedback] = useState('');
-    // Internal state to show AI button only after an attempt or if results are present
-    const [allowAiButtonDisplay, setAllowAiButtonDisplay] = useState(false);
 
-
-    const handleAnswerChange = (questionId, answer) => {
-        setAnswers(prev => ({ ...prev, [questionId]: answer }));
-        // Reset feedback if answers change
-        setFeedback('');
-        setAllowAiButtonDisplay(false); // Hide AI button until next check
+    const handleLocalAnswerChange = (questionId, answer) => {
+        onAnswerChange(taskKey, questionId, answer);
     };
 
-    const checkAnswers = () => {
-        const newResults = {};
-        let allCorrect = true;
-        let anyAnswered = false;
-
-        questions.forEach(q => {
-            if (answers[q.id]) {
-                anyAnswered = true;
-                if (answers[q.id] === q.answer) {
-                    newResults[q.id] = 'correct';
-                } else {
-                    newResults[q.id] = 'incorrect';
-                    allCorrect = false;
-                }
-            } else {
-                allCorrect = false; // Missing answer means not all correct
-            }
-        });
-
-        setResults(newResults);
-        setAllowAiButtonDisplay(true); // Allow AI button to show after check
-
-        if (!anyAnswered && questions.length > 0) {
-            setFeedback(''); // Or some message like "Please answer the questions."
-        } else if (allCorrect) {
-            setFeedback(allCorrectMsg);
-        } else {
-            setFeedback(someIncorrectMsg);
-        }
-    };
-    
-    const getResultClass = (isCorrect) => {
-        if (isCorrect === 'correct') return 'text-green-600 font-bold';
-        if (isCorrect === 'incorrect') return 'text-red-600 font-bold';
+    const getResultClassBasedOnValidation = (questionId) => {
+        const validationStatus = mainValidation?.[questionId];
+        if (validationStatus === 'correct') return 'text-green-600 font-bold';
+        if (validationStatus === 'incorrect') return 'text-red-600 font-bold';
         return 'font-medium';
     };
 
     const getFeedbackClass = () => {
-        if(feedback === allCorrectMsg) return 'text-green-600';
-        if(feedback === someIncorrectMsg) return 'text-red-600';
+        const resultType = mainResults?.type;
+        if(resultType === 'correct') return 'text-green-600';
+        if(resultType === 'incorrect') return 'text-red-600';
         return '';
     };
-
-    const t = translations[lang]; // For Ask AI button text
-
-    // Determine if the "Ask AI" button should be shown
-    const shouldShowAskAiButton = allowAiButtonDisplay && feedback === someIncorrectMsg && showAiButtonForTask;
 
     return (
         <div className="mb-8 p-6 border rounded-lg task-card bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -175,20 +139,20 @@ const HeadlineClassifierTask = ({
             <p className="mb-4 text-sm text-gray-600">{description}</p>
             <div className="space-y-6">
                 {questions.map((q) => (
-                     <div key={q.id} className={`p-2 rounded-md ${results[q.id] ? (results[q.id] === 'correct' ? 'bg-green-50' : 'bg-red-50') : ''}`}>
-                        <p className={`headline-text ${getResultClass(results[q.id])}`}>{q[lang]}</p>
+                     <div key={q.id} className={`p-2 rounded-md ${mainValidation?.[q.id] ? (mainValidation[q.id] === 'correct' ? 'bg-green-50' : 'bg-red-50') : ''}`}>
+                        <p className={`headline-text ${getResultClassBasedOnValidation(q.id)}`}>{q[lang]}</p>
                         <div className="mt-2">
                             {Object.entries(options).map(([value, labelKey]) => (
                                 <label key={value} className="radio-label mr-4 inline-flex items-center cursor-pointer">
                                     <input
                                         type="radio"
-                                        name={`headline_${taskKey}_${q.id}_type`} // Make name unique per taskKey
+                                        name={`headline_${taskKey}_${q.id}_type`}
                                         value={value}
-                                        checked={answers[q.id] === value}
-                                        onChange={() => handleAnswerChange(q.id, value)}
+                                        checked={mainAnswers?.[q.id] === value}
+                                        onChange={() => handleLocalAnswerChange(q.id, value)}
                                         className="radio-input mr-2 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                                     />
-                                    <span>{translations[lang][labelKey]}</span>
+                                    <span>{t(labelKey)}</span>
                                 </label>
                             ))}
                         </div>
@@ -236,146 +200,156 @@ const HeadlineClassifierTask = ({
 
 export default function FakeNewsAnalysisModule() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
+
+    // States aligned with CulturalProverbsModule
+    const [answers, setAnswers] = useState({}); // Centralized answers for all tasks
+    const [validation, setValidation] = useState({}); // For tasks with checkable answers
+    const [results, setResults] = useState({}); // Stores feedback messages for tasks
+    const [showAiButtons, setShowAiButtons] = useState({}); // Controls AI button visibility per task
+
+    // AI Chat states
     const [activeChatTaskKey, setActiveChatTaskKey] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
-    const [showAiButtons, setShowAiButtons] = useState({});
-    const [intermediateTask1Answers, setIntermediateTask1Answers] = useState({ h1_exp: '', h2_exp: '' });
-    const [advancedTask1Answers, setAdvancedTask1Answers] = useState({ believable_headline: '', exaggerated_headline: '' });
-    const [saveFeedback, setSaveFeedback] = useState({});
+
+    const [saveFeedback, setSaveFeedback] = useState({}); // For "Saved!" messages on submit
+
+    // Progress tracking (optional for now, but good for future alignment)
+    // const [completedTasks, setCompletedTasks] = useState({});
+    // const [progressLoading, setProgressLoading] = useState(true);
+    // const [progressError, setProgressError] = useState(null);
 
 
     useEffect(() => {
-        document.title = t('pageTitle'); // Using t a bit earlier
-        // Initialize showAiButtons for relevant tasks if needed, or handle dynamically
-        // For now, HeadlineClassifierTask will control its own "Ask AI" button visibility based on its results
+        const storedLang = localStorage.getItem('logiclingua-lang') || 'ru';
+        setLang(storedLang);
+        document.documentElement.lang = storedLang;
+        // Title will be set using t() once it's initialized
+    }, []);
+
+    useEffect(() => {
+        document.title = t('pageTitle');
     }, [lang]);
 
-    const currentTranslations = translations[lang] || translations['en'];
-    const t = useCallback((key) => {
-        return currentTranslations[key] || translations['en'][key] || key;
-    }, [currentTranslations]);
 
-    // Helper function to format answers for AI
-    const formatAnswersForAI = (answerObject) => {
-        if (!answerObject || typeof answerObject !== 'object') return [];
-        return Object.entries(answerObject).map(([key, value]) => `${key}: ${String(value)}`);
+    const t = useCallback((key) => {
+        return translations[lang]?.[key] || translations['en'][key] || key;
+    }, [lang]);
+
+    // Generic answer handler for all tasks
+    const handleAnswerChange = (taskKey, itemKey, value) => {
+        // if (isTaskCompleted(taskKey) && !progressLoading) return; // If progress tracking is added
+
+        setAnswers(prev => ({
+            ...prev,
+            [taskKey]: { ...prev[taskKey], [itemKey]: value }
+        }));
+        // Reset results and validation for the specific task if an answer changes
+        setResults(prev => { const newResults = {...prev}; delete newResults[taskKey]; return newResults; });
+        setValidation(prev => { const newValidation = {...prev}; delete newValidation[taskKey]; return newValidation; });
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: false })); // Hide AI button until next check/submit
     };
 
-    // Prepares payload for moduleService.getGenericAiInteraction
-    const getGenericAiPayload = (taskKey, currentLang, taskSpecificAnswers, taskSpecificResults = {}) => {
-        let moduleId = 'fake-news-analysis';
-        let specificTaskId = '';
-        let interaction_type = '';
+    // Generic submit handler for open-ended tasks (Intermediate, Advanced)
+    const handleSubmit = (taskKey) => {
+        setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t('submissionReceived') }}));
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Show AI button after submission
+
+        const taskAnswersToSave = answers[taskKey];
+        if (taskAnswersToSave && Object.keys(taskAnswersToSave).length > 0) {
+            // Simulate saving, replace with actual moduleService.saveTaskAnswers if available and needed
+            console.log(`Simulating save for ${taskKey}:`, taskAnswersToSave);
+            setSaveFeedback(prev => ({ ...prev, [taskKey]: "Saved!" })); // Using generic "Saved!"
+            setTimeout(() => {
+                setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
+            }, 2000);
+            // Example: moduleService.saveTaskAnswers('fake-news-analysis', taskKey, taskAnswersToSave)...
+        }
+    };
+
+
+    // Helper to format key-value objects into an array of strings for AI
+    const formatObjectToStringArray = (obj) => {
+        if (!obj || typeof obj !== 'object') return [];
+        return Object.entries(obj).map(([key, value]) => `${key}: ${String(value)}`);
+    };
+
+    // Adapted from CulturalProverbsModule's getTaskDetailsForAI
+    // Renamed from getGenericAiPayload
+    const getTaskDetailsForAI_FakeNews = (taskKey) => {
+        const currentTaskAnswers = answers[taskKey] || {};
         let block_context = '';
-        let user_inputs = []; // Equivalent to user_answers in some contexts
-        let correct_answers_data = []; // For tasks that have them
+        let user_answers_formatted = []; // Will be an array of strings
+        let correct_answers_formatted = []; // Will be an array of strings
+        let interaction_type = '';
+        // const currentLang = lang; // lang is available in the closure
 
         if (taskKey === 'fakeNewsBeginnerTask1') {
-            specificTaskId = 'beginner_task_1';
-            interaction_type = 'explain_mistakes_headlines'; // Specific type for this interaction
-
+            interaction_type = 'explain_mistakes_headlines'; // Or a more generic 'explain_mistakes' if backend handles specifics
             block_context = `${t('fakeNewsBTask1Title')}\n${t('fakeNewsBTask1Desc')}\n\nHeadlines:\n`;
-            block_context += beginnerTask1Data.map(h => `- ${h[currentLang]}`).join("\n");
+            block_context += beginnerTask1Data.map(h => `- ${h[lang]}`).join("\n");
 
-            const formattedUserAnswers = {};
+            // User answers from the main 'answers' state
+            const userSelections = {};
             beginnerTask1Data.forEach(h => {
-                formattedUserAnswers[h.id] = taskSpecificAnswers?.[h.id] || 'Not answered';
+                userSelections[h.id] = currentTaskAnswers[h.id] || 'Not answered';
             });
-            user_inputs = [JSON.stringify(formattedUserAnswers)]; // Send as a JSON string array element
+            user_answers_formatted = formatObjectToStringArray(userSelections);
 
             const correctAnswers = {};
-            beginnerTask1Data.forEach(h => correctAnswers[h.id] = h.answer);
-            correct_answers_data = [JSON.stringify(correctAnswers)]; // Send as a JSON string array element
+            beginnerTask1Data.forEach(h => { correctAnswers[h.id] = h.answer; });
+            correct_answers_formatted = formatObjectToStringArray(correctAnswers);
 
         } else if (taskKey === 'fakeNewsIntermediateTask1') {
-            specificTaskId = 'intermediate_task_1';
-            interaction_type = 'discuss_open_ended_explanations';
-
+            interaction_type = 'discuss_open_ended_explanations'; // Or 'discuss_open_ended'
             block_context = `${t('fakeNewsITask1Title')}\n${t('fakeNewsITask1Desc')}\n\nHeadlines for explanation:\n`;
-            block_context += `1. ${currentLang === 'ru' ? 'Новый закон в Узбекистане требует от всех студентов изучать корейский язык' : 'New Law in Uzbekistan Requires All Students to Learn Korean'}\n`;
-            block_context += `2. ${currentLang === 'ru' ? 'Ташкент стал первым городом, запретившим смартфоны' : 'Tashkent Becomes the First City to Ban Smartphones'}`;
+            block_context += `1. ${lang === 'ru' ? 'Новый закон в Узбекистане требует от всех студентов изучать корейский язык' : 'New Law in Uzbekistan Requires All Students to Learn Korean'}\n`;
+            block_context += `2. ${lang === 'ru' ? 'Ташкент стал первым городом, запретившим смартфоны' : 'Tashkent Becomes the First City to Ban Smartphones'}`;
+            block_context += `\n\nFollow-up questions to consider: ${t('fakeNewsITask1FollowUp1')}, ${t('fakeNewsITask1FollowUp2')}, ${t('fakeNewsITask1FollowUp3')}`;
 
-            user_inputs = [
-                `Explanation for H1: ${taskSpecificAnswers?.h1_exp || '(Not answered)'}`,
-                `Explanation for H2: ${taskSpecificAnswers?.h2_exp || '(Not answered)'}`
-            ];
-            // No correct_answers_data for this discussion type
+
+            // User answers for explanations
+            const explanations = {
+                explanation_headline1: currentTaskAnswers?.h1_exp || '(Not answered)',
+                explanation_headline2: currentTaskAnswers?.h2_exp || '(Not answered)'
+            };
+            user_answers_formatted = formatObjectToStringArray(explanations);
+            // No specific "correct" answers for this discussion type, so correct_answers_formatted remains empty.
 
         } else if (taskKey === 'fakeNewsAdvancedTask1') {
-            specificTaskId = 'advanced_task_1';
-            interaction_type = 'discuss_open_ended_creations';
-
+            interaction_type = 'discuss_open_ended_creations'; // Or 'discuss_open_ended'
             block_context = `${t('fakeNewsATask1Title')}\n${t('fakeNewsATask1Desc')}`;
+            block_context += `\n\nFollow-up questions to consider: ${t('fakeNewsATask1FollowUp1')}, ${t('fakeNewsATask1FollowUp2')}, ${t('fakeNewsATask1FollowUp3')}`;
 
-            user_inputs = [
-                `User's Believable Fake Headline: ${taskSpecificAnswers?.believable_headline || '(Not provided)'}`,
-                `User's Exaggerated Fake Headline: ${taskSpecificAnswers?.exaggerated_headline || '(Not provided)'}`
-            ];
-            // No correct_answers_data for this discussion type
+
+            const creations = {
+                user_believable_headline: currentTaskAnswers?.believable_headline || '(Not provided)',
+                user_exaggerated_headline: currentTaskAnswers?.exaggerated_headline || '(Not provided)'
+            };
+            user_answers_formatted = formatObjectToStringArray(creations);
+            // No specific "correct" answers for this discussion type.
+        } else {
+            console.warn(`Task ${taskKey} not configured for AI interaction in getTaskDetailsForAI_FakeNews.`);
+            // Return a default structure or throw an error
+            return {
+                block_context: "Task not configured.",
+                user_answers: [],
+                correct_answers: [],
+                interaction_type: "error"
+            };
         }
 
         return {
-            module_id: moduleId,
-            task_id: specificTaskId,
-            interaction_type,
+            // module_id: 'fake-news-analysis', // This might be passed directly to the service call
+            // task_id: taskKey, // Or a more specific ID if needed by backend
             block_context,
-            user_inputs, // This will be mapped to 'user_answers' by getGenericAiInteraction if needed by backend
-            correct_answers_data, // This will be mapped to 'correct_answers'
+            user_answers: user_answers_formatted, // Ensure this is the key the service expects for user's answers
+            correct_answers: correct_answers_formatted, // Ensure this is the key for correct answers
+            interaction_type,
         };
     };
 
-    const handleIntermediateTask1Change = (headlineKey, value) => {
-        setIntermediateTask1Answers(prev => ({ ...prev, [headlineKey]: value }));
-        // If submission feedback was shown, clear it
-        if (saveFeedback['fakeNewsIntermediateTask1']) {
-            setSaveFeedback(prev => ({ ...prev, ['fakeNewsIntermediateTask1']: '' }));
-        }
-        // Optionally hide AI button until next submission
-        // setShowAiButtons(prev => ({ ...prev, ['fakeNewsIntermediateTask1']: false }));
-    };
-
-    const handleSubmitIntermediateTask1 = () => {
-        const taskKey = 'fakeNewsIntermediateTask1';
-        // Here you would typically save the answers to a backend
-        // For now, we'll just simulate it and show the discuss button
-        console.log(`Submitting answers for ${taskKey}:`, intermediateTask1Answers);
-        setSaveFeedback(prev => ({ ...prev, [taskKey]: t('submissionReceived') || "Submission received." }));
-        setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
-
-        // Example of saving if moduleService is set up for it:
-        /*
-        moduleService.saveTaskAnswers('fake-news-analysis', taskKey, intermediateTask1Answers)
-            .then(() => {
-                setSaveFeedback(prev => ({ ...prev, [taskKey]: t('answersSavedSuccess') || "Answers saved!" }));
-                setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
-                setTimeout(() => {
-                    setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
-                }, 2000);
-            })
-            .catch(err => {
-                console.error(`Error saving answers for ${taskKey}:`, err);
-                setSaveFeedback(prev => ({ ...prev, [taskKey]: t('answersSavedError') || "Save failed." }));
-            });
-        */
-    };
-
-    const handleAdvancedTask1Change = (headlineKey, value) => {
-        setAdvancedTask1Answers(prev => ({ ...prev, [headlineKey]: value }));
-        if (saveFeedback['fakeNewsAdvancedTask1']) {
-            setSaveFeedback(prev => ({ ...prev, ['fakeNewsAdvancedTask1']: '' }));
-        }
-    };
-
-    const handleSubmitAdvancedTask1 = () => {
-        const taskKey = 'fakeNewsAdvancedTask1';
-        console.log(`Submitting answers for ${taskKey}:`, advancedTask1Answers);
-        setSaveFeedback(prev => ({ ...prev, [taskKey]: t('submissionReceived') || "Submission received." }));
-        setShowAiButtons(prev => ({ ...prev, [taskKey]: true }));
-        // Add backend saving logic here if needed, similar to handleSubmitIntermediateTask1
-    };
-
-    const handleAskAI = async (taskKey, userQuery = '', currentTaskAnswers, currentTaskResults = {}) => {
+    const handleAskAI = async (taskKey, userQuery = '') => {
         if (isAiLoading && activeChatTaskKey === taskKey && userQuery === '') {
              console.log('AI is already loading for this task.');
              return;
@@ -385,33 +359,34 @@ export default function FakeNewsAnalysisModule() {
         let currentMessages = chatMessages;
 
         if (!activeChatTaskKey || activeChatTaskKey !== taskKey ) {
-            currentMessages = []; // Start fresh for a new task or if chat wasn't active for this task
+            currentMessages = [];
         }
 
         if (userQuery) {
             const newUserMessage = { "role": 'user', "content": userQuery };
             currentMessages = [...currentMessages, newUserMessage];
         } else if (currentMessages.length === 0 && (taskKey === 'fakeNewsIntermediateTask1' || taskKey === 'fakeNewsAdvancedTask1')) {
-            // For discussion tasks, add a default prompt if no userQuery and messages are empty
              currentMessages = [{ "role": 'assistant', "content": t('aiDiscussPrompt') || "Let's discuss your response. What would you like to explore further?" }];
         }
 
         setChatMessages(currentMessages);
         setActiveChatTaskKey(taskKey);
 
-        // Add "Thinking..." message
         if (userQuery || currentMessages.length === 0 || (currentMessages.length > 0 && currentMessages[currentMessages.length -1].role === 'user') ) {
-            // Ensure "Thinking..." is added only once if not already the last message
             if (currentMessages.length === 0 || currentMessages[currentMessages.length -1].content !== (t('aiThinking') || "Thinking...")) {
                  setChatMessages(prev => [...prev, { "role": 'assistant', "content": t('aiThinking') || "Thinking..." }]);
             }
         }
 
-        // Prepare payload using the new structure for getGenericAiInteraction
-        const payload = getGenericAiPayload(taskKey, lang, currentTaskAnswers, currentTaskResults);
+        const {
+            block_context,
+            user_answers: user_answers_for_ai, // Renaming to avoid conflict with component's 'answers' state
+            correct_answers: correct_answers_for_ai,
+            interaction_type
+        } = getTaskDetailsForAI_FakeNews(taskKey);
 
-        if (!payload.block_context && !payload.user_inputs.length) { // Check if payload is minimally valid
-            console.error("[FakeNewsAnalysisModule] Could not get valid payload for AI. taskKey:", taskKey, payload);
+        if (interaction_type === "error" || !block_context) {
+            console.error("[FakeNewsAnalysisModule] Could not get valid task details for AI. taskKey:", taskKey);
             setChatMessages(prev => [
                 ...prev.filter(msg => msg.content !== (t('aiThinking') || "Thinking...")),
                 { "role": 'assistant', "content": t('aiErrorGetDetails') || "Sorry, I couldn't get the details for this task." }
