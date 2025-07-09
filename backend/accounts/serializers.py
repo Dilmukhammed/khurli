@@ -32,8 +32,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         # user.save() # create_user already saves the user
         return user
 
-class UserDetailsSerializer(serializers.ModelSerializer):
+from backend.backend.accounts.models import UserProfile # Import UserProfile
+
+class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ('id', 'username', 'email')
-        read_only_fields = ('id', 'username', 'email')
+        model = UserProfile
+        fields = ('age',)
+
+class UserDetailsSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True, allow_null=True) # Allow profile to be null if not found, though signal should create it.
+    # 'first_name' is a standard field on Django's User model.
+    # It will be included if listed in 'fields' and User is the model.
+
+    class Meta:
+        model = User # Serializing the User model
+        fields = ('id', 'username', 'email', 'first_name', 'profile')
+        # read_only_fields are implicitly handled for ModelSerializer fields not otherwise specified.
+        # Explicitly listing them is fine for clarity or if some were writable.
+        # Since all are read-only from the perspective of this GET endpoint, this is okay.

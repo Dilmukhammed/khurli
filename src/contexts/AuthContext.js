@@ -23,10 +23,12 @@ export const AuthProvider = ({ children }) => {
             return null; // Explicitly return null or handle error
         }
 
+import { API_ENDPOINTS } from '../../frontend/src/apiConfig.js'; // Assuming structure: project_root/src/contexts/ and project_root/frontend/src/
+
         setIsFetchingUser(true);
         // setError(null); // Clear previous user-specific errors before fetching
         try {
-            const response = await fetch('/api/accounts/user/', { // TODO: Centralize API URLs
+            const response = await fetch(API_ENDPOINTS.accounts.userDetails, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
@@ -38,7 +40,7 @@ export const AuthProvider = ({ children }) => {
                     const refreshed = await attemptRefreshToken(); // Try to refresh
                     if (refreshed) {
                         const newToken = authService.getAuthToken();
-                        const retryResponse = await fetch('/api/accounts/user/', {
+                        const retryResponse = await fetch(API_ENDPOINTS.accounts.userDetails, {
                              headers: { 'Authorization': `Bearer ${newToken}`, 'Content-Type': 'application/json'}
                         });
                         if (!retryResponse.ok) throw new Error('Failed to fetch user details after token refresh.');
