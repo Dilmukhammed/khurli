@@ -75,7 +75,7 @@ const HomePage = () => {
             aboutDesc: "Logiclingua — это комплексная цифровая экосистема обучения, разработанная для улучшения образования с помощью интерактивных модулей...",
             contactTitle: "Остались вопросы?",
             contactSubtitle: "Свяжитесь с нами для получения дополнительной информации.",
-            contactButton: "Написать нам",
+            contactButton: "Связаться с нами", // Changed from "Написать нам" to ensure it implies opening a page
         },
         en: {
             welcomeTitle: "Welcome to Logiclingua!",
@@ -92,7 +92,7 @@ const HomePage = () => {
             aboutDesc: "Logiclingua is a comprehensive digital learning ecosystem designed to enhance education through interactive modules...",
             contactTitle: "Have Questions?",
             contactSubtitle: "Contact us for more information.",
-            contactButton: "Contact Us",
+            contactButton: "Contact Us", // This can remain "Contact Us"
         }
     };
 
@@ -149,9 +149,9 @@ const HomePage = () => {
       <section id="contact" className="text-center bg-indigo-50 p-8 rounded-lg shadow-md">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">{t.contactTitle}</h2>
         <p className="text-gray-600 mb-6">{t.contactSubtitle}</p>
-        <a href="mailto:support@logiclingua.com" className="bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white px-6 py-2 rounded-md text-lg font-semibold transition duration-300">
+        <Link to="/contact" className="bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white px-6 py-2 rounded-md text-lg font-semibold transition duration-300">
           {t.contactButton}
-        </a>
+        </Link>
       </section>
     </>
   );

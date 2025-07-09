@@ -19,6 +19,7 @@ const Header = () => {
       navLogin: "Войти",
       navRegister: "Регистрация",
       navLogout: "Выйти",
+      navContact: "Контакты", // Added Contact link translation
       loading: "Загрузка..."
     },
     en: {
@@ -29,6 +30,7 @@ const Header = () => {
       navLogin: "Login",
       navRegister: "Register",
       navLogout: "Logout",
+      navContact: "Contact Us", // Added Contact link translation
       loading: "Loading..."
     }
   };
@@ -87,6 +89,7 @@ const Header = () => {
         <div className="flex items-center space-x-2">
           <NavLink to="/modules">{t.navAllModules}</NavLink>
           <NavLink to="/games">{t.navGamesHub}</NavLink>
+          <NavLink to="/contact">{t.navContact}</NavLink> {/* Added Contact Us link */}
           
           {isAuthenticated && (
             <>
