@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import moduleService from '../../services/moduleService'; // Import moduleService
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 
 // Translations object for the Fake News Analysis module.
 const translations = {
@@ -177,6 +179,14 @@ const HeadlineClassifierTask = ({ questions, lang, title, description, options, 
 
 export default function FakeNewsAnalysisModule() {
     const [lang, setLang] = useState(localStorage.getItem('logiclingua-lang') || 'ru');
+    const [answers, setAnswers] = useState({}); // State for user answers
+    const { isAuthenticated } = useAuth(); // Auth context
+
+    // Task IDs for savable inputs
+    const savableTaskIds = {
+        intermediateFactCheck: 'intermediate_fact_check',
+        advancedHeadlineCreation: 'advanced_headline_creation'
+    };
 
     useEffect(() => {
         document.title = translations[lang].pageTitle;
@@ -188,12 +198,67 @@ export default function FakeNewsAnalysisModule() {
         };
         window.addEventListener('storage', handleStorageChange);
 
+        // Load saved answers when component mounts or user/lang changes
+        // This will be fully implemented in the "Load Logic" step
+        // For now, just ensuring the structure is ready
+        const loadAnswers = async () => {
+            if (isAuthenticated) {
+                const loadedData = {};
+                try {
+                    const intermediateAnswers = await moduleService.getTaskAnswers('fake-news-analysis', savableTaskIds.intermediateFactCheck);
+                    if (intermediateAnswers) {
+                        loadedData[savableTaskIds.intermediateFactCheck] = intermediateAnswers;
+                    }
+                    const advancedAnswers = await moduleService.getTaskAnswers('fake-news-analysis', savableTaskIds.advancedHeadlineCreation);
+                    if (advancedAnswers) {
+                        loadedData[savableTaskIds.advancedHeadlineCreation] = advancedAnswers;
+                    }
+                    setAnswers(prev => ({ ...prev, ...loadedData }));
+                } catch (error) {
+                    console.error("Error loading answers for FakeNewsAnalysisModule:", error);
+                }
+            } else {
+                setAnswers({}); // Clear answers if not authenticated
+            }
+        };
+        loadAnswers(); // Call loadAnswers
+
         return () => {
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, [lang]);
+    }, [lang, isAuthenticated]); // Add isAuthenticated to dependencies
 
     const t = translations[lang];
+
+    const handleAnswerChange = useCallback((taskId, itemKey, value) => {
+        setAnswers(prev => ({
+            ...prev,
+            [taskId]: {
+                ...prev[taskId],
+                [itemKey]: value
+            }
+        }));
+    }, []);
+
+    // Placeholder for handleSubmit, will be implemented in "Save Logic" step
+    const handleSubmit = useCallback(async (taskId) => {
+        if (!isAuthenticated) {
+            alert("Please log in to save your progress.");
+            return;
+        }
+        const answersToSave = answers[taskId];
+        if (answersToSave && Object.keys(answersToSave).length > 0) {
+            try {
+                await moduleService.saveTaskAnswers('fake-news-analysis', taskId, answersToSave);
+                // alert("Progress saved!"); // Or use a more subtle notification
+                console.log(`Answers for ${taskId} saved successfully.`);
+            } catch (error) {
+                console.error(`Error saving answers for ${taskId}:`, error);
+                // alert("Failed to save progress. Please try again.");
+            }
+        }
+    }, [answers, isAuthenticated]);
+
 
     return (
         <div className="bg-gray-100 text-gray-800 font-sans">
@@ -232,14 +297,26 @@ export default function FakeNewsAnalysisModule() {
                         <div className="space-y-6">
                             <div>
                                 <p className="font-medium">{lang === 'ru' ? 'Заголовок 1: "Новый закон в Узбекистане требует от всех студентов изучать корейский язык"' : 'Headline 1: "New Law in Uzbekistan Requires All Students to Learn Korean"'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="3" placeholder={t.placeholderExplanation}></textarea>
+                                <textarea
+                                    className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
+                                    rows="3"
+                                    placeholder={t.placeholderExplanation}
+                                    value={answers[savableTaskIds.intermediateFactCheck]?.headline1_explanation || ''}
+                                    onChange={(e) => handleAnswerChange(savableTaskIds.intermediateFactCheck, 'headline1_explanation', e.target.value)}
+                                ></textarea>
                             </div>
                             <div>
                                 <p className="font-medium">{lang === 'ru' ? 'Заголовок 2: "Ташкент стал первым городом, запретившим смартфоны"' : 'Headline 2: "Tashkent Becomes the First City to Ban Smartphones"'}</p>
-                                <textarea className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500" rows="3" placeholder={t.placeholderExplanation}></textarea>
+                                <textarea
+                                    className="mt-2 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-green-500 focus:border-green-500"
+                                    rows="3"
+                                    placeholder={t.placeholderExplanation}
+                                    value={answers[savableTaskIds.intermediateFactCheck]?.headline2_explanation || ''}
+                                    onChange={(e) => handleAnswerChange(savableTaskIds.intermediateFactCheck, 'headline2_explanation', e.target.value)}
+                                ></textarea>
                             </div>
                         </div>
-                         <button className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">{t.submitBtn}</button>
+                         <button onClick={() => handleSubmit(savableTaskIds.intermediateFactCheck)} className="mt-6 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">{t.submitBtn}</button>
                     </div>
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-lg font-semibold mb-2">{t.followUpActivitiesTitle}</h4>
@@ -260,14 +337,28 @@ export default function FakeNewsAnalysisModule() {
                         <div className="space-y-4">
                             <div>
                                 <label htmlFor="believable_fake_headline" className="block text-sm font-medium text-gray-700">{t.believableFakeHeadlineLabel}</label>
-                                <input type="text" id="believable_fake_headline" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder={t.placeholderBelievableFake} />
+                                <input
+                                    type="text"
+                                    id="believable_fake_headline"
+                                    className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500"
+                                    placeholder={t.placeholderBelievableFake}
+                                    value={answers[savableTaskIds.advancedHeadlineCreation]?.believable_headline || ''}
+                                    onChange={(e) => handleAnswerChange(savableTaskIds.advancedHeadlineCreation, 'believable_headline', e.target.value)}
+                                />
                             </div>
                             <div>
                                 <label htmlFor="exaggerated_fake_headline" className="block text-sm font-medium text-gray-700">{t.exaggeratedFakeHeadlineLabel}</label>
-                                <input type="text" id="exaggerated_fake_headline" className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500" placeholder={t.placeholderExaggeratedFake} />
+                                <input
+                                    type="text"
+                                    id="exaggerated_fake_headline"
+                                    className="mt-1 w-full border rounded-md p-2 text-sm border-gray-300 focus:ring-red-500 focus:border-red-500"
+                                    placeholder={t.placeholderExaggeratedFake}
+                                    value={answers[savableTaskIds.advancedHeadlineCreation]?.exaggerated_headline || ''}
+                                    onChange={(e) => handleAnswerChange(savableTaskIds.advancedHeadlineCreation, 'exaggerated_headline', e.target.value)}
+                                />
                             </div>
                         </div>
-                        <button className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">{t.submitBtn}</button>
+                        <button onClick={() => handleSubmit(savableTaskIds.advancedHeadlineCreation)} className="mt-6 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">{t.submitBtn}</button>
                     </div>
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-lg font-semibold mb-2">{t.followUpQuestionsTitle}</h4>

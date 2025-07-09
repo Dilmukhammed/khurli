@@ -334,33 +334,17 @@ const CulturalProverbsModule = () => {
         setLanguage(storedLang);
         document.documentElement.lang = storedLang;
         document.title = translations[storedLang]?.pageTitle || translations['en'].pageTitle;
-
-        const loadSavedAnswers = async () => {
-            const loadedAnswers = {};
-            for (const taskKey of discussionTaskKeys) {
-                try {
-                    const savedTaskAnswers = await moduleService.getTaskAnswers('cultural-proverbs', taskKey);
-                    if (savedTaskAnswers) {
-                        loadedAnswers[taskKey] = savedTaskAnswers;
-                    }
-                } catch (err) {
-                    console.error(`Failed to fetch saved answers for ${taskKey} in cultural-proverbs:`, err);
-                }
-            }
-            if (Object.keys(loadedAnswers).length > 0) {
-                setAnswers(prev => ({ ...prev, ...loadedAnswers }));
-            }
-        };
-        loadSavedAnswers();
-
-    }, []); // Language and initial answer loading
+    }, [language]); // Re-run if language prop changes, though it's from localStorage here.
 
     useEffect(() => {
-        if (isAuthenticated) {
-            setProgressLoading(true);
-            setProgressError(null); // Clear previous errors
-            moduleService.getModuleProgress('cultural-proverbs')
-                .then(progressData => {
+        const loadInitialData = async () => {
+            if (isAuthenticated) {
+                setProgressLoading(true);
+                setProgressError(null);
+
+                // Load Task Completion Status
+                try {
+                    const progressData = await moduleService.getModuleProgress('cultural-proverbs');
                     const completed = {};
                     if (progressData && Array.isArray(progressData)) {
                         progressData.forEach(item => {
@@ -370,19 +354,40 @@ const CulturalProverbsModule = () => {
                         });
                     }
                     setCompletedTasks(completed);
-                })
-                .catch(err => {
+                } catch (err) {
                     console.error("Failed to fetch module progress:", err);
                     setProgressError(err.message || "Could not load progress.");
-                })
-                .finally(() => {
-                    setProgressLoading(false);
-                });
-        } else {
-            setCompletedTasks({}); // Clear progress if not authenticated
-            setProgressLoading(false);
-        }
-    }, [isAuthenticated]);
+                }
+
+                // Load Saved Answers for Discussion Tasks
+                const loadedUserAnswers = {};
+                for (const taskKey of discussionTaskKeys) {
+                    try {
+                        const savedTaskAnswers = await moduleService.getTaskAnswers('cultural-proverbs', taskKey);
+                        if (savedTaskAnswers) {
+                            loadedUserAnswers[taskKey] = savedTaskAnswers;
+                        }
+                    } catch (err) {
+                        console.error(`Failed to fetch saved answers for ${taskKey} in cultural-proverbs:`, err);
+                        // Optionally set an error state for individual task answer loading
+                    }
+                }
+                if (Object.keys(loadedUserAnswers).length > 0) {
+                    setAnswers(prev => ({ ...prev, ...loadedUserAnswers }));
+                }
+
+                setProgressLoading(false);
+            } else {
+                // Clear all progress and answers if user is not authenticated
+                setCompletedTasks({});
+                setAnswers({});
+                setProgressLoading(false);
+                setProgressError(null);
+            }
+        };
+
+        loadInitialData();
+    }, [isAuthenticated, language]); // Added language here as well, in case translations affect initial load logic or keys indirectly
 
     const t = useCallback((key) => {
         return translations[language]?.[key] || translations['en'][key] || key;
@@ -685,8 +690,16 @@ const CulturalProverbsModule = () => {
     };
 
     const handleSubmit = (taskKey) => { // For open-ended tasks
-         setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t('submissionReceived') }}));
-         setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Explicitly show AI button
+        if (!isAuthenticated) {
+            console.warn("User not authenticated. Cannot save answers for", taskKey);
+            // Consider showing a user-facing message, e.g., via a toast notification or alert.
+            // For now, just preventing save and logging.
+            setResults(prev => ({ ...prev, [taskKey]: { type: 'error', message: "Please log in to save your progress." } }));
+            return;
+        }
+
+        setResults(prev => ({ ...prev, [taskKey]: { type: 'submitted', message: t('submissionReceived') }}));
+        setShowAiButtons(prev => ({ ...prev, [taskKey]: true })); // Explicitly show AI button
 
         if (discussionTaskKeys.includes(taskKey)) {
             const taskAnswersToSave = answers[taskKey];
@@ -701,10 +714,15 @@ const CulturalProverbsModule = () => {
                     .catch(err => {
                         console.error(`Error saving answers for ${taskKey} in cultural-proverbs:`, err);
                         setSaveFeedback(prev => ({ ...prev, [taskKey]: "Save failed." }));
+                        // Also update results to show error
+                        setResults(prev => ({ ...prev, [taskKey]: { type: 'error', message: "Save failed. Please try again." } }));
                         setTimeout(() => {
                             setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
                         }, 3000);
                     });
+            } else {
+                // No answers to save, maybe clear feedback or do nothing
+                setSaveFeedback(prev => ({ ...prev, [taskKey]: "" }));
             }
         }
     };
