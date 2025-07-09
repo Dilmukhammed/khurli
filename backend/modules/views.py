@@ -157,6 +157,133 @@ class GeminiProverbExplanationView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+# For AI Recommendations - Simplified module data (ideally from a shared source or DB)
+# This is a placeholder. In a real app, this might come from settings or another config.
+MODULE_DEFINITIONS_BACKEND = [
+    {'id': 'cultural-proverbs', 'name': 'Analyzing Cultural Proverbs', 'totalTasks': 14},
+    {'id': 'fact-opinion', 'name': 'Fact vs. Opinion', 'totalTasks': 7},
+    {'id': 'debating', 'name': 'Debating Social Issues', 'totalTasks': 7},
+    {'id': 'ethical-dilemmas', 'name': 'Ethical Dilemmas & Problem Solving', 'totalTasks': 13},
+    {'id': 'fake-news-analysis', 'name': 'Fake News Analysis', 'totalTasks': 3},
+]
+
+class PersonalizedRecommendationsAIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        progress_summary_parts = []
+
+        # 1. Fetch progress data
+        try:
+            all_completed_progress = UserModuleProgress.objects.filter(user=user, status=UserModuleProgress.ProgressStatus.COMPLETED)
+            all_task_answers = UserTaskAnswer.objects.filter(user=user)
+        except Exception as e:
+            logger.error(f"Error fetching user progress/answers for AI recommendations: {str(e)}")
+            return Response({"error": "Could not fetch user data for recommendations."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        completed_tasks_by_module = {}
+        for progress in all_completed_progress:
+            completed_tasks_by_module.setdefault(progress.module_id, set()).add(progress.task_id)
+
+        answered_tasks_by_module = {}
+        for answer_record in all_task_answers:
+            answered_tasks_by_module.setdefault(answer_record.module_id, set()).add(answer_record.task_id)
+            # We could also include answer content here if needed for more detailed AI analysis,
+            # but for now, just knowing it was attempted/answered is enough for summary.
+
+        # 2. Summarize progress for each module
+        for module_def in MODULE_DEFINITIONS_BACKEND:
+            module_id = module_def['id']
+            module_name = module_def['name']
+            total_tasks = module_def['totalTasks']
+
+            completed_count = len(completed_tasks_by_module.get(module_id, set()))
+
+            # Attempted tasks: include completed ones and those with answers but not explicitly completed
+            attempted_task_ids = completed_tasks_by_module.get(module_id, set()).copy()
+            attempted_task_ids.update(answered_tasks_by_module.get(module_id, set()))
+            attempted_count = len(attempted_task_ids)
+
+            if completed_count == total_tasks:
+                progress_summary_parts.append(f"- Module '{module_name}': Fully completed ({completed_count}/{total_tasks} tasks).")
+            elif attempted_count > 0:
+                progress_summary_parts.append(f"- Module '{module_name}': In progress. Completed {completed_count} tasks, attempted {attempted_count}/{total_tasks} tasks.")
+            else:
+                progress_summary_parts.append(f"- Module '{module_name}': Not started (0/{total_tasks} tasks).")
+
+        if not progress_summary_parts:
+            progress_summary_parts.append("User has not started any modules yet.")
+
+        user_progress_summary_text = "\n".join(progress_summary_parts)
+
+        # 3. Construct AI Prompt
+        # More sophisticated prompt engineering can be done here.
+        ai_prompt = (
+            "You are a helpful and encouraging learning assistant called Logiclingua AI coach. "
+            "Based on the following summary of a user's progress across various learning modules, "
+            "provide 2-3 short, actionable, and personalized recommendations for what they could focus on next. "
+            "Start each recommendation with a relevant emoji. "
+            "The recommendations should be distinct and suggest specific modules or types of activities. "
+            "If the user has completed many modules, congratulate them and suggest advanced topics or revisiting areas for deeper understanding. "
+            "If the user is new, suggest good starting points.\n\n"
+            "User's Progress Summary:\n"
+            f"{user_progress_summary_text}\n\n"
+            "Please provide your recommendations as a list of strings, where each string is one recommendation. For example: ['🚀 Suggestion 1...', '💡 Suggestion 2...']"
+            "Ensure the output is only the list of recommendation strings."
+        )
+
+        logger.debug(f"AI Recommendation Prompt for user {user.id}:\n{ai_prompt}")
+
+        # 4. Call AI Service
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            logger.error("GEMINI_API_KEY not configured for AI recommendations.")
+            return Response({"error": "AI service not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            client = OpenAI(api_key=api_key, base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
+
+            # For Gemini, we typically use a chat-like structure or a direct text prompt.
+            # Let's use a direct text prompt for simplicity here, assuming the model can handle it.
+            # If using chat completions, structure as messages.
+            response = client.completions.create( # Using completions for a direct prompt-response
+                model="gemini-1.5-flash-latest", # Or a more suitable text generation model if available
+                prompt=ai_prompt,
+                max_tokens=200, # Adjust as needed
+                temperature=0.7, # Adjust for creativity vs. determinism
+            )
+            raw_ai_response = response.choices[0].text.strip()
+            logger.debug(f"Raw AI Response for recommendations: {raw_ai_response}")
+
+            # Attempt to parse the AI response if it's expected to be a list of strings
+            # This is a simple parsing; more robust parsing might be needed if AI format varies.
+            recommendations_list = []
+            try:
+                # A common way AI might format a list of strings in text: "['Rec 1', 'Rec 2']" or one per line.
+                if raw_ai_response.startswith("['") and raw_ai_response.endswith("']"):
+                    # Attempt to parse as a Python list string representation
+                    import ast
+                    recommendations_list = ast.literal_eval(raw_ai_response)
+                elif raw_ai_response.startswith("- ") or raw_ai_response.startswith("🚀") or raw_ai_response.startswith("💡") or raw_ai_response.startswith("📚"): # Check for markdown list or emoji start
+                    recommendations_list = [line.strip() for line in raw_ai_response.splitlines() if line.strip()]
+                else: # Fallback if it's just plain text or unexpected format
+                    recommendations_list = [rec.strip() for rec in raw_ai_response.split('\n') if rec.strip()]
+
+                if not isinstance(recommendations_list, list) or not all(isinstance(item, str) for item in recommendations_list):
+                    logger.warning(f"AI recommendation response was not a list of strings: {raw_ai_response}. Using as single recommendation.")
+                    recommendations_list = [raw_ai_response] # Fallback to the whole string as one recommendation
+
+            except Exception as parse_error:
+                logger.error(f"Error parsing AI recommendations: {parse_error}. Raw response: {raw_ai_response}")
+                recommendations_list = [raw_ai_response] # Fallback to the whole string
+
+        except Exception as e:
+            logger.error(f"Error calling AI service for recommendations: {str(e)}")
+            return Response({"error": f"Failed to get recommendations from AI: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"recommendations": recommendations_list}, status=status.HTTP_200_OK)
+
 
 class UserTaskAnswerViewSet(viewsets.ModelViewSet):
     """

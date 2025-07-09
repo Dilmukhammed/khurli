@@ -506,4 +506,46 @@ export default {
             throw error;
         }
     },
+
+    getAiPersonalizedRecommendations: async () => {
+        let token = authService.getAuthToken();
+        if (!token) {
+            throw new Error('User not authenticated. Cannot fetch AI personalized recommendations.');
+        }
+
+        const requestUrl = `${API_BASE_URL}/ai/personal-recommendations/`;
+        const requestOptions = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        };
+
+        try {
+            const response = await fetch(requestUrl, requestOptions);
+            return await handleResponse(response); // Expects { recommendations: ["Rec 1", "Rec 2"] }
+        } catch (error) {
+            if (error.isAuthError && error.statusCode === 401) {
+                console.log('Auth error (401) in getAiPersonalizedRecommendations, attempting token refresh...');
+                try {
+                    await authService.refreshToken();
+                    token = authService.getAuthToken();
+                    if (!token) {
+                        authService.logout();
+                        throw new Error('Token refresh succeeded but no new token. Logging out.');
+                    }
+                    requestOptions.headers['Authorization'] = `Bearer ${token}`;
+                    const retryResponse = await fetch(requestUrl, requestOptions);
+                    return await handleResponse(retryResponse);
+                } catch (refreshError) {
+                    console.error('Token refresh failed for getAiPersonalizedRecommendations:', refreshError);
+                    authService.logout();
+                    throw new Error(`Token refresh failed: ${refreshError.message}. Original error: ${error.message}`);
+                }
+            }
+            console.error('Error fetching AI personalized recommendations:', error);
+            throw error;
+        }
+    },
 };
