@@ -11,15 +11,19 @@ const CompleteProfilePage = () => {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
-    const { isAuthenticated, user } = useAuth(); // Get user to prefill email if desired, and check auth
+    // Get user, isAuthenticated, and refreshUser (which is fetchUserDetails) from AuthContext
+    const { isAuthenticated, user, refreshUser, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        // Redirect to login if not authenticated and no user object (e.g. direct navigation to this page)
-        // Or if user has already completed this step (how to check this? - future enhancement)
-        if (!isAuthenticated) {
-            // navigate('/login'); // Or handle as an error/message
+        // This effect can be simplified or removed if App.js handles global redirects robustly.
+        // For now, it ensures that if somehow an unauthenticated user lands here, they might be redirected.
+        // Or, if profile is already complete, redirect away.
+        if (!authLoading && !isAuthenticated) {
+             navigate('/login');
         }
-    }, [isAuthenticated, navigate]);
+        // Potentially, if (isAuthenticated && user && isProfileComplete) navigate('/account');
+        // But the App.js redirector should handle moving away if profile becomes complete.
+    }, [isAuthenticated, user, authLoading, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -44,9 +48,10 @@ const CompleteProfilePage = () => {
                 last_name: lastName,
                 age: age ? parseInt(age, 10) : null
             });
-            // Optional: Update AuthContext if it stores these details
-            // Example: user.firstName = firstName; (this depends on AuthContext structure)
-            // authContext.setUser({...authContext.user, firstName, lastName }); // If context has a setUser
+
+            if (refreshUser) { // Check if refreshUser function is available from context
+                await refreshUser(); // Re-fetch user data to update AuthContext, including isProfileComplete
+            }
 
             navigate('/account'); // Or to homepage, or wherever appropriate after profile completion
         } catch (err) {
