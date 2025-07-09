@@ -75,7 +75,9 @@ const Register = () => {
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-      // navigate('/login'); // Optionally navigate, or let user see success message
+      // Instead of just setting a message, navigate to complete profile page
+      // setRegistrationMessage(t.registrationSuccess); // Keep or remove based on UX preference
+      navigate('/complete-profile'); // Navigate to complete profile page
     } catch (err) {
       // AuthContext's error state (authError) will be updated by the context itself.
       // We can also set local formError if needed, or rely on authError.

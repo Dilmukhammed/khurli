@@ -17,6 +17,7 @@ import ModulesHub from './pages/ModulesHub';
 import GamesHub from './pages/GamesHub';
 import LibraryPage from './pages/LibraryPage'; // Import the new LibraryPage component
 import ContactPage from './pages/ContactPage'; // Import the ContactPage component
+import CompleteProfilePage from './pages/CompleteProfilePage'; // Import CompleteProfilePage
 
 // ... (other imports for modules and games remain the same) ...
 import CulturalProverbsModule from './features/modules/CulturalProverbsModule';
@@ -50,6 +51,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/complete-profile" element={<CompleteProfilePage />} /> {/* Add route for complete profile */}
               <Route
                 path="/account"
                 element={
