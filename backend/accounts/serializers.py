@@ -32,7 +32,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         # user.save() # create_user already saves the user
         return user
 
-from backend.backend.accounts.models import UserProfile # Import UserProfile
+from user_profile_data.models import UserProfile # Import UserProfile from its app
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:

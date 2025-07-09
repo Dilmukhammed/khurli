@@ -22,7 +22,8 @@ INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles',
     'rest_framework', 'rest_framework_simplejwt', 'corsheaders',
-    'accounts', # Accounts app
+    'accounts', # Accounts app (handles main auth views/urls at backend/accounts/)
+    'backend.backend.accounts.apps.UserProfileDataConfig', # App with UserProfile model at backend/backend/accounts/
     'modules',  # Modules app
     'library',  # New library app
 ]
