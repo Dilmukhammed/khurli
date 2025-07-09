@@ -37,6 +37,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Local apps - using simple names first, assuming they are in Python's path
+    # relative to the project root (backend/backend/) or configured via PYTHONPATH
+    'accounts', # Refers to backend/backend/accounts
+    'modules',  # Refers to backend/modules - This might need path adjustment if backend/ is not in PYTHONPATH
+    'library',  # Refers to backend/library - Same as modules
+
+    # Also, assuming rest_framework and other necessary third-party apps are already here or will be added.
+    # For now, focusing on what's needed for UserProfile signal.
 ]
 
 MIDDLEWARE = [
