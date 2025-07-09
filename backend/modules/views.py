@@ -1,9 +1,9 @@
 from django.conf import settings
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import UserModuleProgress # Assumes models.py exists
-from .serializers import UserModuleProgressSerializer, GeminiExplanationRequestSerializer, GeminiExplanationResponseSerializer
+from .models import UserModuleProgress, UserTaskAnswer # Assumes models.py exists
+from .serializers import UserModuleProgressSerializer, UserTaskAnswerSerializer, GeminiExplanationRequestSerializer, GeminiExplanationResponseSerializer
 import google.generativeai as genai
 # from google import genai # Corrected import
 from openai import OpenAI
@@ -156,6 +156,66 @@ class GeminiProverbExplanationView(APIView):
                 {"error": "Server error processing AI response."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class UserTaskAnswerViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to view or edit their task answers.
+    """
+    serializer_class = UserTaskAnswerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        This view should return a list of all the task answers
+        for the currently authenticated user.
+        """
+        user = self.request.user
+        queryset = UserTaskAnswer.objects.filter(user=user)
+
+        # Optional: Allow filtering by module_id and task_id if provided in query params
+        module_id = self.request.query_params.get('module_id')
+        task_id = self.request.query_params.get('task_id')
+
+        if module_id:
+            queryset = queryset.filter(module_id=module_id)
+        if task_id:
+            queryset = queryset.filter(task_id=task_id)
+            # If task_id is provided, we typically expect one result or none.
+            # For a GET to /api/answers/?module_id=x&task_id=y, this is fine.
+            # If we wanted a detail route like /api/answers/module/task/, we'd set up custom routing.
+            # For now, query params on the list view cover the "get specific answer" case.
+
+        return queryset
+
+    def perform_create(self, serializer):
+        """
+        Associate the answer with the currently authenticated user.
+        The serializer's `create` method already handles `update_or_create`
+        and uses `self.context['request'].user`.
+        This method is called by ModelViewSet during create.
+        """
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        """
+        Ensure the user can only update their own answers.
+        The get_object method (called internally by ModelViewSet for detail routes)
+        will use get_queryset, which is already filtered by user.
+        So, an attempt to update another user's answer would result in a 404.
+        """
+        serializer.save(user=self.request.user)
+
+    # perform_destroy will also be implicitly permissioned by get_queryset
+    # if the frontend needs to delete answers.
+
+    # Note: For retrieving a single, specific UserTaskAnswer by module_id and task_id
+    # (e.g., for the `getTaskAnswers` service function), the frontend will make a GET request
+    # to the list endpoint with query parameters: `/api/modules/answers/?module_id=<moduleId>&task_id=<taskId>`
+    # The `get_queryset` method handles this. If exactly one is found, it will be in the list.
+    # If we wanted a URL like `/api/modules/answers/<moduleId>/<taskId>/`,
+    # we would need a more complex router setup or a custom detail view.
+    # For now, using query params on the list endpoint is simpler.
 
 class GeminiDebateDiscussionView(APIView):
     permission_classes = [permissions.IsAuthenticated]

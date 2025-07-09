@@ -395,35 +395,115 @@ export default {
     getAiExplanation,
     // getAiFactOpinion, // Commented out as it's being replaced by generic interaction
     getAiDebateDiscussion, // Ensure this is moved before export and included
-    getGenericAiInteraction, // To be added
+    getGenericAiInteraction,
 
-    // Save answers for a specific task (using localStorage for now)
+    // Save answers for a specific task to the backend
     saveTaskAnswers: async (moduleId, taskId, answers) => {
+        let token = authService.getAuthToken();
+        if (!token) {
+            // Consider if an error should be thrown or if an attempt to refresh should be made.
+            // For simplicity, we'll throw an error, assuming UI checks for auth.
+            throw new Error('User not authenticated. Cannot save task answers.');
+        }
+
+        const requestUrl = `${API_BASE_URL}/answers/`; // POST to the list endpoint
+        const requestBody = {
+            module_id: moduleId,
+            task_id: taskId,
+            answers: answers, // The answers object itself
+        };
+        const requestOptions = {
+            method: 'POST', // POST will create or update due to serializer logic
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(requestBody),
+        };
+
         try {
-            const key = `moduleAnswers-${moduleId}-${taskId}`;
-            localStorage.setItem(key, JSON.stringify(answers));
-            // console.log(`Saved answers for ${moduleId}-${taskId}:`, answers);
-            return Promise.resolve({ success: true, message: "Answers saved locally." });
+            const response = await fetch(requestUrl, requestOptions);
+            return await handleResponse(response); // handleResponse will parse JSON and handle errors
         } catch (error) {
-            console.error("Error saving task answers to localStorage:", error);
-            return Promise.reject({ success: false, message: "Failed to save answers locally." });
+            if (error.isAuthError && error.statusCode === 401) {
+                console.log('Auth error (401) in saveTaskAnswers, attempting token refresh...');
+                try {
+                    await authService.refreshToken();
+                    token = authService.getAuthToken();
+                    if (!token) {
+                        authService.logout();
+                        throw new Error('Token refresh succeeded but no new token. Logging out.');
+                    }
+                    requestOptions.headers['Authorization'] = `Bearer ${token}`;
+                    const retryResponse = await fetch(requestUrl, requestOptions);
+                    return await handleResponse(retryResponse);
+                } catch (refreshError) {
+                    console.error('Token refresh failed for saveTaskAnswers:', refreshError);
+                    authService.logout();
+                    throw new Error(`Token refresh failed: ${refreshError.message}. Original error: ${error.message}`);
+                }
+            }
+            console.error(`Error saving task answers for ${moduleId}-${taskId} to backend:`, error);
+            throw error; // Re-throw the error to be caught by the calling component
         }
     },
 
-    // Get saved answers for a specific task (from localStorage for now)
+    // Get saved answers for a specific task from the backend
     getTaskAnswers: async (moduleId, taskId) => {
+        let token = authService.getAuthToken();
+        if (!token) {
+            // As above, consider error handling or refresh.
+            throw new Error('User not authenticated. Cannot fetch task answers.');
+        }
+
+        // Construct URL with query parameters
+        const requestUrl = `${API_BASE_URL}/answers/?module_id=${encodeURIComponent(moduleId)}&task_id=${encodeURIComponent(taskId)}`;
+        const requestOptions = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        };
+
         try {
-            const key = `moduleAnswers-${moduleId}-${taskId}`;
-            const savedAnswers = localStorage.getItem(key);
-            if (savedAnswers) {
-                // console.log(`Retrieved answers for ${moduleId}-${taskId}:`, JSON.parse(savedAnswers));
-                return Promise.resolve(JSON.parse(savedAnswers));
+            const response = await fetch(requestUrl, requestOptions);
+            const responseData = await handleResponse(response); // Expects a list
+
+            // The backend returns a list. If found, it's a list with one item.
+            if (responseData && responseData.length > 0) {
+                return responseData[0].answers; // Return the 'answers' object from the first item
             }
-            // console.log(`No saved answers found for ${moduleId}-${taskId}`);
-            return Promise.resolve(null); // Return null if no answers are found
+            return null; // No answers found for this module/task for the user
         } catch (error) {
-            console.error("Error retrieving task answers from localStorage:", error);
-            return Promise.reject(null); // Or handle error as appropriate
+            if (error.isAuthError && error.statusCode === 401) {
+                console.log('Auth error (401) in getTaskAnswers, attempting token refresh...');
+                try {
+                    await authService.refreshToken();
+                    token = authService.getAuthToken();
+                    if (!token) {
+                        authService.logout();
+                        throw new Error('Token refresh succeeded but no new token. Logging out.');
+                    }
+                    requestOptions.headers['Authorization'] = `Bearer ${token}`;
+                    const retryResponse = await fetch(requestUrl, requestOptions);
+                    const retryData = await handleResponse(retryResponse);
+                    if (retryData && retryData.length > 0) {
+                        return retryData[0].answers;
+                    }
+                    return null;
+                } catch (refreshError) {
+                    console.error('Token refresh failed for getTaskAnswers:', refreshError);
+                    authService.logout();
+                    throw new Error(`Token refresh failed: ${refreshError.message}. Original error: ${error.message}`);
+                }
+            }
+            console.error(`Error fetching task answers for ${moduleId}-${taskId} from backend:`, error);
+            // It's important to decide how to handle "not found" vs. actual errors.
+            // handleResponse throws for non-ok statuses. A 404 might be "normal" if no answers saved yet.
+            // However, our current backend setup for list view with filters will return an empty list (200 OK) if not found.
+            // So, an error here is likely a genuine server/network issue or an auth problem.
+            throw error;
         }
     },
 };

@@ -60,3 +60,48 @@ class GeminiExplanationRequestSerializer(serializers.Serializer):
 
 class GeminiExplanationResponseSerializer(serializers.Serializer):
     explanation = serializers.CharField()
+
+
+from .models import UserTaskAnswer
+
+class UserTaskAnswerSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the UserTaskAnswer model.
+    """
+    class Meta:
+        model = UserTaskAnswer
+        fields = ['id', 'user', 'module_id', 'task_id', 'answers', 'last_updated']
+        read_only_fields = ['user', 'last_updated']
+
+    def create(self, validated_data):
+        """
+        Create or update a UserTaskAnswer instance.
+        If an answer already exists for this user, module, and task, update it.
+        Otherwise, create a new one.
+        """
+        user = self.context['request'].user
+        module_id = validated_data.get('module_id')
+        task_id = validated_data.get('task_id')
+        answers = validated_data.get('answers')
+
+        instance, created = UserTaskAnswer.objects.update_or_create(
+            user=user,
+            module_id=module_id,
+            task_id=task_id,
+            defaults={'answers': answers}
+        )
+        return instance
+
+    def update(self, instance, validated_data):
+        """
+        Update an existing UserTaskAnswer instance.
+        This is handled by update_or_create in the create method if we ensure
+        that POST requests can also update. Alternatively, make create only create
+        and update only update for stricter PUT semantics.
+        For simplicity with typical frontend patterns (POST to save, which might be create or update),
+        update_or_create in create is often sufficient.
+        If PUT is used explicitly for updates, this method will be called.
+        """
+        instance.answers = validated_data.get('answers', instance.answers)
+        instance.save()
+        return instance
