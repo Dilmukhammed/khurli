@@ -31,3 +31,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         # user.set_password(validated_data['password']) # create_user already handles password hashing
         # user.save() # create_user already saves the user
         return user
+
+class UserDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email')
+        read_only_fields = ('id', 'username', 'email')
