@@ -262,50 +262,73 @@ export default function FakeNewsAnalysisModule() {
         window.addEventListener('storage', handleStorageChange);
 
         // Load saved answers when component mounts or user/lang changes
-        // This will be fully implemented in the "Load Logic" step
-        // For now, just ensuring the structure is ready
-        const loadAnswers = async () => {
+        const loadInitialData = async () => { // Renamed from loadAnswers for clarity
+            console.log('[FakeNewsAnalysisModule] loadInitialData triggered. isAuthenticated:', isAuthenticated);
             if (isAuthenticated) {
-                const loadedData = {};
-                const initialCompleted = {}; // For completion status
+                const loadedTextAnswers = {}; // For text based answers
+                const initialCompletedStatuses = {}; // For completion statuses
 
                 try {
                     // Load completion statuses (including for beginner task)
+                    console.log('[FakeNewsAnalysisModule] Fetching module progress...');
                     const progressData = await moduleService.getModuleProgress('fake-news-analysis');
+                    console.log('[FakeNewsAnalysisModule] Raw progressData from service:', progressData);
                     if (progressData && Array.isArray(progressData)) {
                         progressData.forEach(item => {
                             if (item.status === 'completed') {
-                                initialCompleted[item.task_id] = true;
+                                initialCompletedStatuses[item.task_id] = true;
                             }
                         });
                     }
-                    setCompletedTasks(initialCompleted);
+                    console.log('[FakeNewsAnalysisModule] Parsed initialCompletedStatuses:', initialCompletedStatuses);
+                    setCompletedTasks(initialCompletedStatuses);
 
                     // Load text answers for savable tasks
+                    console.log(`[FakeNewsAnalysisModule] Fetching answers for task: ${savableTaskIds.intermediateFactCheck}`);
                     const intermediateAnswers = await moduleService.getTaskAnswers('fake-news-analysis', savableTaskIds.intermediateFactCheck);
+                    console.log(`[FakeNewsAnalysisModule] Raw intermediateAnswers for ${savableTaskIds.intermediateFactCheck}:`, intermediateAnswers);
                     if (intermediateAnswers) {
-                        loadedData[savableTaskIds.intermediateFactCheck] = intermediateAnswers;
+                        loadedTextAnswers[savableTaskIds.intermediateFactCheck] = intermediateAnswers;
                     }
+
+                    console.log(`[FakeNewsAnalysisModule] Fetching answers for task: ${savableTaskIds.advancedHeadlineCreation}`);
                     const advancedAnswers = await moduleService.getTaskAnswers('fake-news-analysis', savableTaskIds.advancedHeadlineCreation);
+                    console.log(`[FakeNewsAnalysisModule] Raw advancedAnswers for ${savableTaskIds.advancedHeadlineCreation}:`, advancedAnswers);
                     if (advancedAnswers) {
-                        loadedData[savableTaskIds.advancedHeadlineCreation] = advancedAnswers;
+                        loadedTextAnswers[savableTaskIds.advancedHeadlineCreation] = advancedAnswers;
                     }
-                    setAnswers(prev => ({ ...prev, ...loadedData }));
+
+                    console.log('[FakeNewsAnalysisModule] Parsed loadedTextAnswers:', loadedTextAnswers);
+                    if (Object.keys(loadedTextAnswers).length > 0) {
+                        setAnswers(prev => ({ ...prev, ...loadedTextAnswers }));
+                    } else {
+                        setAnswers(prev => ({...prev})); // Ensure re-render even if empty, though not strictly necessary if initial is {}
+                    }
 
                 } catch (error) {
-                    console.error("Error loading initial data for FakeNewsAnalysisModule:", error);
+                    console.error("[FakeNewsAnalysisModule] Error loading initial data:", error);
                 }
             } else {
+                console.log('[FakeNewsAnalysisModule] User not authenticated, clearing answers and completed tasks.');
                 setAnswers({}); // Clear answers if not authenticated
                 setCompletedTasks({}); // Clear completed tasks if not authenticated
             }
         };
-        loadInitialData(); // Renamed and call
+        loadInitialData();
 
         return () => {
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, [lang, isAuthenticated, savableTaskIds.intermediateFactCheck, savableTaskIds.advancedHeadlineCreation]); // Dependencies
+    }, [lang, isAuthenticated]); // Updated Dependencies: lang and isAuthenticated are the primary triggers.
+
+    // useEffect to log state changes for debugging
+    useEffect(() => {
+        console.log('[FakeNewsAnalysisModule] answers state updated:', answers);
+    }, [answers]);
+
+    useEffect(() => {
+        console.log('[FakeNewsAnalysisModule] completedTasks state updated:', completedTasks);
+    }, [completedTasks]);
 
     const t = translations[lang];
 
@@ -335,6 +358,18 @@ export default function FakeNewsAnalysisModule() {
                 setTimeout(() => {
                     setSaveFeedback(prev => ({ ...prev, [taskId]: "" }));
                 }, 3000);
+
+                // If the task is one of the text-based ones, also mark it as completed.
+                if (taskId === savableTaskIds.intermediateFactCheck || taskId === savableTaskIds.advancedHeadlineCreation) {
+                    try {
+                        await moduleService.markTaskAsCompleted('fake-news-analysis', taskId);
+                        setCompletedTasks(prev => ({ ...prev, [taskId]: true }));
+                        console.log(`Task ${taskId} also marked as completed after saving answers.`);
+                    } catch (completionError) {
+                        console.error(`Error marking text task ${taskId} as completed after saving answers:`, completionError);
+                        // Optionally, inform user that completion status might not have updated
+                    }
+                }
             } catch (error) {
                 console.error(`Error saving answers for ${taskId}:`, error);
                 setSaveFeedback(prev => ({ ...prev, [taskId]: "Save failed. Please try again." }));
@@ -343,7 +378,7 @@ export default function FakeNewsAnalysisModule() {
                 }, 4000);
             }
         }
-    }, [answers, isAuthenticated]);
+    }, [answers, isAuthenticated, savableTaskIds]); // Added savableTaskIds to dependencies
 
     const handleTaskCompleted = useCallback(async (taskKey) => {
         if (!isAuthenticated) {

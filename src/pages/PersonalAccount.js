@@ -57,7 +57,8 @@ const PersonalAccount = () => {
       module1Title: "Анализ культурных пословиц",
       module3Title: "Факт или Мнение",
       module2Title: "Обсуждение социальных вопросов (Дебаты)",
-      moduleEthicalDilemmasTitle: "Этические дилеммы и Решение проблем", // Added
+      moduleEthicalDilemmasTitle: "Этические дилеммы и Решение проблем",
+      moduleFakeNewsTitle: "Анализ фейковых новостей", // Added
       viewAllModulesLink: "Посмотреть все модули",
       recommendationsTitle: "Рекомендации от ИИ",
       recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.",
@@ -84,7 +85,8 @@ const PersonalAccount = () => {
       module1Title: "Analyzing Cultural Proverbs",
       module3Title: "Fact vs. Opinion",
       module2Title: "Debating Social Issues",
-      moduleEthicalDilemmasTitle: "Ethical Dilemmas & Problem Solving", // Added
+      moduleEthicalDilemmasTitle: "Ethical Dilemmas & Problem Solving",
+      moduleFakeNewsTitle: "Fake News Analysis", // Added
       viewAllModulesLink: "View All Modules",
       recommendationsTitle: "AI Recommendations",
       recommendation1: "Try the \"Debating\" module to improve your argumentation skills.",
@@ -136,6 +138,10 @@ const PersonalAccount = () => {
                 'problemsBTask1', 'problemsBTask3',
                 'problemsITask1', 'problemsITask3',
                 'problemsATask1', 'problemsATask4'
+            ],
+            'fake-news-analysis': [ // Added for Fake News module
+                'intermediate_fact_check',
+                'advanced_headline_creation'
             ]
             // Add other modules and their discussion task keys here
           };

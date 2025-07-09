@@ -23,6 +23,12 @@ export const moduleDefinitions = [
     totalTasks: 13, // All 13 tasks are discussion/attemptable
     colorClass: 'bg-cyan-500', // Example color
   },
+  {
+    id: 'fake-news-analysis',
+    translationKey: 'moduleFakeNewsTitle', // New translation key
+    totalTasks: 3, // Beginner (1 completable) + Intermediate (1 discussion) + Advanced (1 discussion)
+    colorClass: 'bg-orange-500', // Example color
+  },
   // Add other modules here if they should be displayed on the PersonalAccount page
 ];
 
