@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'; // Added useState
+import React, { useEffect, useState, useMemo } from 'react'; // Added useState and useMemo
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import moduleService from '../services/moduleService'; // Import moduleService
@@ -34,6 +34,66 @@ const Badge = ({ icon, name, description, achieved = true }) => (
   </div>
 );
 
+// Define translations object outside the component to ensure stability
+const translations = {
+  ru: {
+    welcomeUser: "Добро пожаловать!",
+    dashboardSubtitle: "Ваш прогресс и достижения на Logiclingua.",
+    editProfileLink: "Редактировать профиль",
+    progressTitle: "Прогресс обучения",
+    module1Title: "Анализ культурных пословиц",
+    module3Title: "Факт или Мнение",
+    module2Title: "Обсуждение социальных вопросов (Дебаты)",
+    moduleEthicalDilemmasTitle: "Этические дилеммы и Решение проблем",
+    moduleFakeNewsTitle: "Анализ фейковых новостей", // Added
+    viewAllModulesLink: "Посмотреть все модули",
+    recommendationsTitle: "Рекомендации от ИИ",
+    recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.",
+    recommendation2: "Сыграйте в \"Охоту на Логические Ошибки\" для практики выявления некорректных доводов.",
+    recommendation3: "Изучите ресурсы по критическому мышлению в нашей библиотеке.",
+    gamificationTitle: "Ваши Достижения",
+    pointsLabel: "Баллы",
+    levelLabel: "Уровень",
+    badgesTitle: "Заработанные Значки",
+    badgeCriticalThinker: "Критический мыслитель",
+    badgeCriticalThinkerDesc: "Завершение основ анализа",
+    badgeProblemSolver: "Решатель проблем",
+    badgeProblemSolverDesc: "Успешное решение 5 кейсов",
+    badgeChangemaker: "Создатель перемен",
+    badgeLocked: "(Заблокировано)",
+    loadingUser: "Загрузка данных пользователя...",
+    loadingProgress: "Загрузка прогресса..."
+  },
+  en: {
+    welcomeUser: "Welcome!",
+    dashboardSubtitle: "Your progress and achievements on Logiclingua.",
+    editProfileLink: "Edit Profile",
+    progressTitle: "Learning Progress",
+    module1Title: "Analyzing Cultural Proverbs",
+    module3Title: "Fact vs. Opinion",
+    module2Title: "Debating Social Issues",
+    moduleEthicalDilemmasTitle: "Ethical Dilemmas & Problem Solving",
+    moduleFakeNewsTitle: "Fake News Analysis", // Added
+    viewAllModulesLink: "View All Modules",
+    recommendationsTitle: "AI Recommendations",
+    recommendation1: "Try the \"Debating\" module to improve your argumentation skills.",
+    recommendation2: "Play the \"Logical Fallacy Hunt\" game to practice identifying flawed arguments.",
+    recommendation3: "Explore critical thinking resources in our library.",
+    gamificationTitle: "Your Achievements",
+    pointsLabel: "Points",
+    levelLabel: "Level",
+    badgesTitle: "Earned Badges",
+    badgeCriticalThinker: "Critical Thinker",
+    badgeCriticalThinkerDesc: "Completed analysis basics",
+    badgeProblemSolver: "Problem Solver",
+    badgeProblemSolverDesc: "Successfully solved 5 case studies",
+    badgeChangemaker: "Changemaker",
+    badgeLocked: "(Locked)",
+    loadingUser: "Loading user data...",
+    loadingProgress: "Loading progress..."
+  }
+};
+
 const PersonalAccount = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, loading: authLoading } = useAuth(); // Assuming user object is available from useAuth
@@ -51,67 +111,8 @@ const PersonalAccount = () => {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  const translations = {
-    ru: {
-      welcomeUser: "Добро пожаловать!",
-      dashboardSubtitle: "Ваш прогресс и достижения на Logiclingua.",
-      editProfileLink: "Редактировать профиль",
-      progressTitle: "Прогресс обучения",
-      module1Title: "Анализ культурных пословиц",
-      module3Title: "Факт или Мнение",
-      module2Title: "Обсуждение социальных вопросов (Дебаты)",
-      moduleEthicalDilemmasTitle: "Этические дилеммы и Решение проблем",
-      moduleFakeNewsTitle: "Анализ фейковых новостей", // Added
-      viewAllModulesLink: "Посмотреть все модули",
-      recommendationsTitle: "Рекомендации от ИИ",
-      recommendation1: "Попробуйте модуль \"Дебаты\", чтобы улучшить навыки аргументации.",
-      recommendation2: "Сыграйте в \"Охоту на Логические Ошибки\" для практики выявления некорректных доводов.",
-      recommendation3: "Изучите ресурсы по критическому мышлению в нашей библиотеке.",
-      gamificationTitle: "Ваши Достижения",
-      pointsLabel: "Баллы",
-      levelLabel: "Уровень",
-      badgesTitle: "Заработанные Значки",
-      badgeCriticalThinker: "Критический мыслитель",
-      badgeCriticalThinkerDesc: "Завершение основ анализа",
-      badgeProblemSolver: "Решатель проблем",
-      badgeProblemSolverDesc: "Успешное решение 5 кейсов",
-      badgeChangemaker: "Создатель перемен",
-      badgeLocked: "(Заблокировано)",
-      loadingUser: "Загрузка данных пользователя...",
-      loadingProgress: "Загрузка прогресса..."
-    },
-    en: {
-      welcomeUser: "Welcome!",
-      dashboardSubtitle: "Your progress and achievements on Logiclingua.",
-      editProfileLink: "Edit Profile",
-      progressTitle: "Learning Progress",
-      module1Title: "Analyzing Cultural Proverbs",
-      module3Title: "Fact vs. Opinion",
-      module2Title: "Debating Social Issues",
-      moduleEthicalDilemmasTitle: "Ethical Dilemmas & Problem Solving",
-      moduleFakeNewsTitle: "Fake News Analysis", // Added
-      viewAllModulesLink: "View All Modules",
-      recommendationsTitle: "AI Recommendations",
-      recommendation1: "Try the \"Debating\" module to improve your argumentation skills.",
-      recommendation2: "Play the \"Logical Fallacy Hunt\" game to practice identifying flawed arguments.",
-      recommendation3: "Explore critical thinking resources in our library.",
-      gamificationTitle: "Your Achievements",
-      pointsLabel: "Points",
-      levelLabel: "Level",
-      badgesTitle: "Earned Badges",
-      badgeCriticalThinker: "Critical Thinker",
-      badgeCriticalThinkerDesc: "Completed analysis basics",
-      badgeProblemSolver: "Problem Solver",
-      badgeProblemSolverDesc: "Successfully solved 5 case studies",
-      badgeChangemaker: "Changemaker",
-      badgeLocked: "(Locked)",
-      loadingUser: "Loading user data...",
-      loadingProgress: "Loading progress..."
-    }
-  };
-
-  const t = translations[language] || translations.en;
-
+  // Memoize the 't' object so it only changes when 'language' changes
+  const t = useMemo(() => translations[language] || translations.en, [language]);
 
   useEffect(() => {
     if (isAuthenticated && user) { // Ensure user is authenticated and user object is available
@@ -223,7 +224,7 @@ const PersonalAccount = () => {
       // setAiRecommendations([]); // Commented out
       // setAiRecommendationsError(null); // Commented out
     }
-  }, [isAuthenticated, user, language, t]); // Added language and t to dependency array for translations
+  }, [isAuthenticated, user, language]); // Refined: t is removed as it's derived from language
 
   const badges = [ // Badges remain static for now
     { icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>, name: t.badgeCriticalThinker, description: t.badgeCriticalThinkerDesc, achieved: true },
