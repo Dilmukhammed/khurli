@@ -39,9 +39,9 @@ const PersonalAccount = () => {
   const { isAuthenticated, user, loading: authLoading } = useAuth(); // Assuming user object is available from useAuth
   const [userProgressData, setUserProgressData] = useState([]);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
-  const [aiRecommendations, setAiRecommendations] = useState([]);
-  const [isLoadingAiRecommendations, setIsLoadingAiRecommendations] = useState(true);
-  const [aiRecommendationsError, setAiRecommendationsError] = useState(null);
+  // const [aiRecommendations, setAiRecommendations] = useState([]); // Commented out for static recommendations
+  // const [isLoadingAiRecommendations, setIsLoadingAiRecommendations] = useState(true); // Commented out
+  // const [aiRecommendationsError, setAiRecommendationsError] = useState(null); // Commented out
 
   const language = localStorage.getItem('logiclingua-lang') || 'ru';
 
@@ -195,33 +195,33 @@ const PersonalAccount = () => {
       };
       fetchProgress();
 
-      const fetchAiRecommendations = async () => {
-        setIsLoadingAiRecommendations(true);
-        setAiRecommendationsError(null);
-        try {
-          const data = await moduleService.getAiPersonalizedRecommendations();
-          if (data && data.recommendations) {
-            setAiRecommendations(data.recommendations);
-          } else {
-            setAiRecommendations([]); // Set to empty if no specific recommendations or unexpected format
-          }
-        } catch (error) {
-          console.error("Failed to fetch AI recommendations:", error);
-          setAiRecommendationsError(error.message || "Could not load AI recommendations.");
-          setAiRecommendations([]); // Clear any previous recommendations on error
-        } finally {
-          setIsLoadingAiRecommendations(false);
-        }
-      };
-      fetchAiRecommendations();
+      // const fetchAiRecommendations = async () => { // Commented out AI recommendations fetching
+      //   setIsLoadingAiRecommendations(true);
+      //   setAiRecommendationsError(null);
+      //   try {
+      //     const data = await moduleService.getAiPersonalizedRecommendations();
+      //     if (data && data.recommendations) {
+      //       setAiRecommendations(data.recommendations);
+      //     } else {
+      //       setAiRecommendations([]);
+      //     }
+      //   } catch (error) {
+      //     console.error("Failed to fetch AI recommendations:", error);
+      //     setAiRecommendationsError(error.message || "Could not load AI recommendations.");
+      //     setAiRecommendations([]);
+      //   } finally {
+      //     setIsLoadingAiRecommendations(false);
+      //   }
+      // };
+      // fetchAiRecommendations();
 
     } else {
       // Clear data if not authenticated
       setIsLoadingProgress(false);
       setUserProgressData([]);
-      setIsLoadingAiRecommendations(false);
-      setAiRecommendations([]);
-      setAiRecommendationsError(null);
+      // setIsLoadingAiRecommendations(false); // Commented out
+      // setAiRecommendations([]); // Commented out
+      // setAiRecommendationsError(null); // Commented out
     }
   }, [isAuthenticated, user, language, t]); // Added language and t to dependency array for translations
 
@@ -266,18 +266,12 @@ const PersonalAccount = () => {
 
           <DashboardCard>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">{t.recommendationsTitle}</h2>
-            {isLoadingAiRecommendations && <p className="text-sm text-gray-500">Loading recommendations...</p>}
-            {aiRecommendationsError && <p className="text-sm text-red-500">Error: {aiRecommendationsError}</p>}
-            {!isLoadingAiRecommendations && !aiRecommendationsError && aiRecommendations.length > 0 && (
-              <div className="space-y-3">
-                {aiRecommendations.map((rec, index) => (
-                  <p key={index} className="text-gray-600 text-sm">{rec}</p>
-                ))}
-              </div>
-            )}
-            {!isLoadingAiRecommendations && !aiRecommendationsError && aiRecommendations.length === 0 && (
-              <p className="text-sm text-gray-500">No recommendations available at the moment. Keep learning!</p>
-            )}
+            {/* Reverted to static recommendations */}
+            <div className="space-y-3">
+              <p className="text-gray-600 text-sm">💡 {t.recommendation1}</p>
+              <p className="text-gray-600 text-sm">🎮 {t.recommendation2}</p>
+              <p className="text-gray-600 text-sm">📚 {t.recommendation3}</p>
+            </div>
           </DashboardCard>
         </div>
 
