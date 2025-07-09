@@ -43,7 +43,16 @@ TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIR
                                                   'django.contrib.auth.context_processors.auth',
                                                   'django.contrib.messages.context_processors.messages']}}]
 WSGI_APPLICATION = 'core.wsgi.application'
-DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'auth',       # Имя вашей БД
+        'USER': 'postgres',     # Ваш пользователь БД
+        'PASSWORD': 'dima5577', # Ваш пароль
+        'HOST': 'localhost',           # Или адрес вашего сервера БД (e.g., an AWS RDS endpoint)
+        'PORT': '5432',              # Порт по умолчанию для PostgreSQL
+    }
+}
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
 STATIC_URL = 'static/'
