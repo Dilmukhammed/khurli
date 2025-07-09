@@ -1,6 +1,5 @@
 from django.apps import AppConfig
 
-
 class UserProfileDataConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'user_profile_data' # Unique name for this app
