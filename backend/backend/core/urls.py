@@ -16,9 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include # Added include
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # API endpoints for your apps
     path('api/accounts/', include('accounts.urls')), # Added accounts urls
-
 ]

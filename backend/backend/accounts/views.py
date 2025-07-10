@@ -18,8 +18,7 @@ class RegisterView(generics.CreateAPIView):
                 "user": UserSerializer(user, context=self.get_serializer_context()).data,
                 "message": "User Created Successfully. Now perform Login to get your token.",
             }, status=status.HTTP_201_CREATED)
-        
-        # Log serializer errors for debugging
-        print("Serializer Errors:", serializer.errors) 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Log serializer errors for debugging
+        print("Serializer Errors:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
