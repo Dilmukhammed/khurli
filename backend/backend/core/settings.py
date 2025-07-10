@@ -79,8 +79,12 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'auth',       # Имя вашей БД
+        'USER': 'postgres',     # Ваш пользователь БД
+        'PASSWORD': 'dima5577', # Ваш пароль
+        'HOST': 'localhost',           # Или адрес вашего сервера БД (e.g., an AWS RDS endpoint)
+        'PORT': '5432',              # Порт по умолчанию для PostgreSQL
     }
 }
 

@@ -10,6 +10,8 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = UserSerializer
 
     def create(self, request, *args, **kwargs):
+        print("\n\n--- REGISTER VIEW CREATE METHOD ENTERED ---")
+        print("Request data:", request.data)
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
