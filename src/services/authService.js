@@ -118,28 +118,4 @@ export default {
     getCurrentUser,
     getAuthToken,
 
-    updateProfileDetails: async (profileData) => {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('User not authenticated. Cannot update profile.');
-        }
-
-        const response = await fetch(API_URL + 'profile/update/', { // Assuming API_URL is 'http://localhost:8000/api/accounts/'
-            method: 'PATCH', // Or PUT if you always send all fields
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify(profileData), // profileData should be { first_name, last_name, age }
-        });
-
-        // The handleResponse function might need adjustment if the update endpoint
-        // returns 204 No Content or a different success status without a full JSON body.
-        // For now, assuming it returns a JSON response on success as well.
-        // If it returns 204, handleResponse would need to accommodate that for non-error cases.
-        if (response.status === 204) { // Handle 204 No Content explicitly if backend returns it
-            return null; // Or { success: true }
-        }
-        return handleResponse(response); // Expects JSON response from backend
-    }
 };

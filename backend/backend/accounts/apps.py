@@ -1,10 +1,5 @@
 from django.apps import AppConfig
 
-class UserProfileDataConfig(AppConfig):
+class AccountsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'user_profile_data' # Unique name for this app
-
-    def ready(self):
-        # The @receiver decorator in models.py is usually sufficient for Django to discover signals
-        # once the app is loaded. Explicitly importing models here ensures the module is loaded.
-        from . import models # Ensures models.py (and thus signals within it) is loaded
+    name = 'accounts' # This should match the actual app directory name if it's 'backend.accounts' or just 'accounts' based on INSTALLED_APPS
