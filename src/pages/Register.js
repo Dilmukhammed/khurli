@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 // import { useLanguage } from '../contexts/LanguageContext';
 
 const Register = () => {
+  const [firstName, setFirstName] = useState(''); // Added
+  const [lastName, setLastName] = useState(''); // Added
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +22,10 @@ const Register = () => {
   const translations = {
     ru: {
       registerTitle: "Регистрация в Logiclingua",
+      firstNameLabel: "Имя", // Added
+      firstNamePlaceholder: "Введите ваше имя", // Added
+      lastNameLabel: "Фамилия", // Added
+      lastNamePlaceholder: "Введите вашу фамилию", // Added
       usernameLabel: "Имя пользователя",
       usernamePlaceholder: "Выберите имя пользователя",
       emailLabel: "Email",
@@ -37,6 +43,10 @@ const Register = () => {
     },
     en: {
       registerTitle: "Register for Logiclingua",
+      firstNameLabel: "First Name", // Added
+      firstNamePlaceholder: "Enter your first name", // Added
+      lastNameLabel: "Last Name", // Added
+      lastNamePlaceholder: "Enter your last name", // Added
       usernameLabel: "Username",
       usernamePlaceholder: "Choose a username",
       emailLabel: "Email",
@@ -68,9 +78,11 @@ const Register = () => {
     }
 
     try {
-      await register(username, email, password, confirmPassword); // Use confirmPassword as password2
+      await register(firstName, lastName, username, email, password, confirmPassword); // Use confirmPassword as password2. Added firstName, lastName
       setRegistrationMessage(t.registrationSuccess);
       // Clear form fields
+      setFirstName(''); // Added
+      setLastName(''); // Added
       setUsername('');
       setEmail('');
       setPassword('');
@@ -92,6 +104,20 @@ const Register = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-5">
+          <div>
+            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">{t.firstNameLabel}</label>
+            <input type="text" name="firstName" id="firstName" required value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                   placeholder={t.firstNamePlaceholder} disabled={loading} />
+          </div>
+
+          <div>
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">{t.lastNameLabel}</label>
+            <input type="text" name="lastName" id="lastName" required value={lastName} onChange={(e) => setLastName(e.target.value)}
+                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                   placeholder={t.lastNamePlaceholder} disabled={loading} />
+          </div>
+
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">{t.usernameLabel}</label>
             <input type="text" name="username" id="username" required value={username} onChange={(e) => setUsername(e.target.value)}

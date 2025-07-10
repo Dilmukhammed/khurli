@@ -47,11 +47,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (username, email, password, password2) => {
+    const register = async (firstName, lastName, username, email, password, password2) => { // Added firstName, lastName
         setLoading(true);
         setError(null);
         try {
-            const data = await authService.register(username, email, password, password2);
+            // Pass all arguments to authService.register
+            const data = await authService.register(firstName, lastName, username, email, password, password2);
             setLoading(false);
             return data;
         } catch (err) {
