@@ -28,13 +28,20 @@ const handleResponse = async (response) => {
 };
 
 // Register user
-const register = async (username, email, password, password2) => {
+const register = async (firstName, lastName, username, email, password, password2) => { // Added firstName, lastName
     const response = await fetch(API_URL + 'register/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, email, password, password2 }),
+        body: JSON.stringify({
+            first_name: firstName, // Changed to first_name to match serializer
+            last_name: lastName,   // Changed to last_name to match serializer
+            username,
+            email,
+            password,
+            password2
+        }),
     });
     return handleResponse(response);
 };
