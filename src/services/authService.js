@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8000/api/accounts/'; // Base URL for auth endpoints
+const API_URL = 'https://logiclingua.uz/api/accounts/'; // Base URL for auth endpoints
 
 // Function to handle API responses
 const handleResponse = async (response) => {

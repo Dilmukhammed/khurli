@@ -46,10 +46,10 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'host6967_',       # Имя вашей БД
-        'USER': 'Dima',     # Ваш пользователь БД
-        'PASSWORD': '1?t6BX5ysXkfqzb#', # Ваш пароль
-        'HOST': 'localdb.local:5432',           # Или адрес вашего сервера БД (e.g., an AWS RDS endpoint)
+        'NAME': 'auth',       # Имя вашей БД
+        'USER': 'postgres',     # Ваш пользователь БД
+        'PASSWORD': 'dima5577', # Ваш пароль
+        'HOST': 'localhost',           # Или адрес вашего сервера БД (e.g., an AWS RDS endpoint)
         'PORT': '5432',              # Порт по умолчанию для PostgreSQL
     }
 }

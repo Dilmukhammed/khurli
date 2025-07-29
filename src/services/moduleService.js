@@ -1,6 +1,6 @@
 import authService from './authService'; // To get the auth token
 
-const API_BASE_URL = 'http://localhost:8000/api/modules'; // Base URL for module-related endpoints
+const API_BASE_URL = 'https://logiclingua.uz/api/modules'; // Base URL for module-related endpoints
 
 // Function to handle API responses, similar to authService
 const handleResponse = async (response) => {
